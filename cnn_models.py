@@ -1,4 +1,5 @@
-import numpy as np
+import numpy as cpu_np
+from backend import scalar_to_float, scalar_to_int, to_cpu, to_device, xp
 from layers import Conv2D, ReLU, MaxPool2D, Flatten, Dense, Softmax
 
 
@@ -30,7 +31,7 @@ class StandardCNN:
         ]
 
     def forward(self, image):
-        output = (image / 255.0) - 0.5
+        output = (to_device(image) / 255.0) - 0.5
         for layer in self.layers:
             output = layer.forward(output)
         return output
@@ -43,8 +44,9 @@ class StandardCNN:
     def train_step(self, image, label, learning_rate):
         probabilities = self.forward(image)
 
-        loss = -np.log(probabilities[label] + 1e-9)
-        acc = 1 if np.argmax(probabilities) == label else 0
+        label = int(label)
+        loss = -xp.log(probabilities[label] + 1e-9)
+        acc = 1 if scalar_to_int(xp.argmax(probabilities)) == label else 0
 
         gradient = probabilities.copy()
         gradient[label] -= 1
@@ -55,42 +57,43 @@ class StandardCNN:
 
     def save_weights(self, file_name, class_labels=None):
         save_data = {
-            "conv1_filters": self.layers[0].filters,
-            "conv1_biases": self.layers[0].biases,
-            "conv2_filters": self.layers[3].filters,
-            "conv2_biases": self.layers[3].biases,
-            "dense1_weights": self.layers[7].weights,
-            "dense1_biases": self.layers[7].biases,
-            "dense2_weights": self.layers[9].weights,
-            "dense2_biases": self.layers[9].biases,
+            "conv1_filters": to_cpu(self.layers[0].filters),
+            "conv1_biases": to_cpu(self.layers[0].biases),
+            "conv2_filters": to_cpu(self.layers[3].filters),
+            "conv2_biases": to_cpu(self.layers[3].biases),
+            "dense1_weights": to_cpu(self.layers[7].weights),
+            "dense1_biases": to_cpu(self.layers[7].biases),
+            "dense2_weights": to_cpu(self.layers[9].weights),
+            "dense2_biases": to_cpu(self.layers[9].biases),
         }
 
         if class_labels is not None:
-            self.class_labels = np.array(class_labels)
+            self.class_labels = xp.asarray(class_labels)
             save_data["class_labels"] = self.class_labels
 
-        np.savez(file_name, **save_data)
+        save_data = {key: to_cpu(value) for key, value in save_data.items()}
+        cpu_np.savez(file_name, **save_data)
         print("Saved model weights to", file_name)
 
     def load_weights(self, file_name):
-        data = np.load(file_name)
-        self.layers[0].filters = data["conv1_filters"]
+        data = cpu_np.load(file_name)
+        self.layers[0].filters = xp.asarray(data["conv1_filters"])
         if "conv1_biases" in data.files:
-            self.layers[0].biases = data["conv1_biases"]
-        self.layers[3].filters = data["conv2_filters"]
+            self.layers[0].biases = xp.asarray(data["conv1_biases"])
+        self.layers[3].filters = xp.asarray(data["conv2_filters"])
         if "conv2_biases" in data.files:
-            self.layers[3].biases = data["conv2_biases"]
-        self.layers[7].weights = data["dense1_weights"]
-        self.layers[7].biases = data["dense1_biases"]
-        self.layers[9].weights = data["dense2_weights"]
-        self.layers[9].biases = data["dense2_biases"]
-        self.class_labels = data["class_labels"] if "class_labels" in data.files else None
+            self.layers[3].biases = xp.asarray(data["conv2_biases"])
+        self.layers[7].weights = xp.asarray(data["dense1_weights"])
+        self.layers[7].biases = xp.asarray(data["dense1_biases"])
+        self.layers[9].weights = xp.asarray(data["dense2_weights"])
+        self.layers[9].biases = xp.asarray(data["dense2_biases"])
+        self.class_labels = xp.asarray(data["class_labels"]) if "class_labels" in data.files else None
         print("Loaded model weights from", file_name)
 
     def predict(self, image):
         probabilities = self.forward(image)
-        predicted_index = np.argmax(probabilities)
-        confidence = probabilities[predicted_index] * 100
+        predicted_index = scalar_to_int(xp.argmax(probabilities))
+        confidence = scalar_to_float(probabilities[predicted_index] * 100)
         if self.class_labels is None:
             return predicted_index, confidence
-        return self.class_labels[predicted_index], confidence
+        return scalar_to_int(self.class_labels[predicted_index]), confidence
