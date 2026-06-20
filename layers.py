@@ -1,4 +1,4 @@
-from backend import xp
+import numpy as np
 
 class Conv2D:
     def __init__(self, in_channels, num_filters, filter_size=3, padding=0):
@@ -6,8 +6,8 @@ class Conv2D:
         self.num_filters = num_filters
         self.filter_size = filter_size
         self.padding = padding
-        self.filters = xp.random.randn(num_filters, filter_size, filter_size, in_channels) * xp.sqrt(2.0 / (in_channels * filter_size * filter_size))
-        self.biases = xp.zeros(num_filters)
+        self.filters = np.random.randn(num_filters, filter_size, filter_size, in_channels) * np.sqrt(2.0 / (in_channels * filter_size * filter_size))
+        self.biases = np.zeros(num_filters)
 
     def iterate_regions(self, image):
         h, w = image.shape[0], image.shape[1]
@@ -17,11 +17,11 @@ class Conv2D:
 
     def forward(self, input_data):
         if len(input_data.shape) == 2:
-            input_data = xp.expand_dims(input_data, axis=2)
+            input_data = np.expand_dims(input_data, axis=2)
 
         self.last_input = input_data
         if self.padding > 0:
-            input_data = xp.pad(
+            input_data = np.pad(
                 input_data,
                 ((self.padding, self.padding), (self.padding, self.padding), (0, 0)),
                 mode='constant'
@@ -29,17 +29,17 @@ class Conv2D:
 
         self.last_padded_input = input_data
         h, w = input_data.shape[0], input_data.shape[1]
-        output = xp.zeros((h - self.filter_size + 1, w - self.filter_size + 1, self.num_filters))
+        output = np.zeros((h - self.filter_size + 1, w - self.filter_size + 1, self.num_filters))
 
         for im_region, i, j in self.iterate_regions(input_data):
             for f in range(self.num_filters):
-                output[i, j, f] = xp.sum(im_region * self.filters[f]) + self.biases[f]
+                output[i, j, f] = np.sum(im_region * self.filters[f]) + self.biases[f]
         return output
 
     def backward(self, d_L_d_out, learning_rate):
-        d_L_d_filters = xp.zeros(self.filters.shape)
-        d_L_d_biases = xp.zeros(self.biases.shape)
-        d_L_d_input = xp.zeros(self.last_padded_input.shape)
+        d_L_d_filters = np.zeros(self.filters.shape)
+        d_L_d_biases = np.zeros(self.biases.shape)
+        d_L_d_input = np.zeros(self.last_padded_input.shape)
 
         for im_region, i, j in self.iterate_regions(self.last_padded_input):
             for f in range(self.num_filters):
@@ -61,10 +61,10 @@ class Conv2D:
 class ReLU:
     def forward(self, input_data):
         self.last_input = input_data
-        return xp.maximum(0, input_data)
+        return np.maximum(0, input_data)
 
     def backward(self, d_L_d_out, learning_rate):
-        d_L_d_input = xp.copy(d_L_d_out)
+        d_L_d_input = np.copy(d_L_d_out)
         d_L_d_input[self.last_input <= 0] = 0
         return d_L_d_input
 
@@ -83,16 +83,16 @@ class MaxPool2D:
     def forward(self, input_data):
         self.last_input = input_data
         h, w, num_filters = input_data.shape
-        output = xp.zeros((h // self.pool_size, w // self.pool_size, num_filters))
+        output = np.zeros((h // self.pool_size, w // self.pool_size, num_filters))
         for im_region, i, j in self.iterate_regions(input_data):
-            output[i, j] = xp.amax(im_region, axis=(0, 1))
+            output[i, j] = np.amax(im_region, axis=(0, 1))
         return output
 
     def backward(self, d_L_d_out, learning_rate):
-        d_L_d_input = xp.zeros(self.last_input.shape)
+        d_L_d_input = np.zeros(self.last_input.shape)
         for im_region, i, j in self.iterate_regions(self.last_input):
             h, w, f = im_region.shape
-            amax = xp.amax(im_region, axis=(0, 1))
+            amax = np.amax(im_region, axis=(0, 1))
             
             for i2 in range(h):
                 for j2 in range(w):
@@ -111,16 +111,16 @@ class Flatten:
 
 class Dense:
     def __init__(self, input_len, nodes):
-        self.weights = xp.random.randn(input_len, nodes) * xp.sqrt(2.0 / input_len)
-        self.biases = xp.zeros(nodes)
+        self.weights = np.random.randn(input_len, nodes) * np.sqrt(2.0 / input_len)
+        self.biases = np.zeros(nodes)
 
     def forward(self, input_data):
         self.last_input = input_data
-        return xp.dot(input_data, self.weights) + self.biases
+        return np.dot(input_data, self.weights) + self.biases
 
     def backward(self, d_L_d_out, learning_rate):
-        d_L_d_weights = xp.outer(self.last_input, d_L_d_out)
-        d_L_d_input = xp.dot(d_L_d_out, self.weights.T)
+        d_L_d_weights = np.outer(self.last_input, d_L_d_out)
+        d_L_d_input = np.dot(d_L_d_out, self.weights.T)
         
         self.weights -= learning_rate * d_L_d_weights
         self.biases -= learning_rate * d_L_d_out
@@ -130,8 +130,8 @@ class Dense:
 class Softmax:
     def forward(self, input_data):
         self.last_totals = input_data
-        tmp = xp.exp(input_data - xp.max(input_data))
-        self.last_output = tmp / xp.sum(tmp)
+        tmp = np.exp(input_data - np.max(input_data))
+        self.last_output = tmp / np.sum(tmp)
         return self.last_output
 
     def backward(self, d_L_d_out, learning_rate):

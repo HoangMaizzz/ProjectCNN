@@ -1,6 +1,5 @@
 import time
-import numpy as cpu_np
-from backend import GPU_ENABLED, scalar_to_float, scalar_to_int, to_device, xp
+import numpy as np
 from cnn_models import StandardCNN
 
 
@@ -29,8 +28,8 @@ def evaluate_model(model, X, y):
     for image, label in zip(X, y):
         label = int(label)
         probabilities = model.forward(image)
-        loss += scalar_to_float(-xp.log(probabilities[label] + 1e-9))
-        if scalar_to_int(xp.argmax(probabilities)) == label:
+        loss += -np.log(probabilities[label] + 1e-9)
+        if np.argmax(probabilities) == label:
             correct += 1
 
     return (loss / num_samples), (correct / num_samples) * 100
@@ -41,22 +40,22 @@ def select_balanced_subset(X, y, max_samples, seed):
         if not BALANCE_CLASSES:
             return X, y
 
-    rng = cpu_np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     selected_indices = []
-    unique_labels = cpu_np.unique(y)
+    unique_labels = np.unique(y)
 
-    class_sizes = [cpu_np.sum(y == label) for label in unique_labels]
+    class_sizes = [np.sum(y == label) for label in unique_labels]
     samples_per_class = min(min(class_sizes), max(1, max_samples // len(unique_labels)))
     class_counts = {}
 
     for label in unique_labels:
-        label_indices = cpu_np.where(y == label)[0]
+        label_indices = np.where(y == label)[0]
         rng.shuffle(label_indices)
         take_count = min(samples_per_class, len(label_indices))
         selected_indices.extend(label_indices[:take_count])
         class_counts[label] = int(take_count)
 
-    selected_indices = cpu_np.array(selected_indices)
+    selected_indices = np.array(selected_indices)
     rng.shuffle(selected_indices)
 
     print("Selected class counts:", {chr(k): v for k, v in class_counts.items()})
@@ -72,14 +71,14 @@ def select_subset(X, y, max_samples, balance_classes, seed):
     if balance_classes:
         return select_balanced_subset(X, y, max_samples, seed)
 
-    rng = cpu_np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     indices = rng.permutation(len(X))[:max_samples]
     return X[indices], y[indices]
 
 
 def load_feedback_data(path):
     try:
-        feedback = cpu_np.load(path)
+        feedback = np.load(path)
     except FileNotFoundError:
         return None, None
 
@@ -93,13 +92,13 @@ def load_feedback_data(path):
 
 
 def stratified_split(X, y, test_ratio, val_ratio, seed):
-    rng = cpu_np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     train_indices = []
     val_indices = []
     test_indices = []
 
-    for label in cpu_np.unique(y):
-        label_indices = cpu_np.where(y == label)[0]
+    for label in np.unique(y):
+        label_indices = np.where(y == label)[0]
         rng.shuffle(label_indices)
 
         num_test = int(round(len(label_indices) * test_ratio))
@@ -109,9 +108,9 @@ def stratified_split(X, y, test_ratio, val_ratio, seed):
         val_indices.extend(label_indices[num_test:num_test + num_val])
         train_indices.extend(label_indices[num_test + num_val:])
 
-    train_indices = cpu_np.array(train_indices)
-    val_indices = cpu_np.array(val_indices)
-    test_indices = cpu_np.array(test_indices)
+    train_indices = np.array(train_indices)
+    val_indices = np.array(val_indices)
+    test_indices = np.array(test_indices)
 
     rng.shuffle(train_indices)
     rng.shuffle(val_indices)
@@ -124,16 +123,16 @@ def stratified_split(X, y, test_ratio, val_ratio, seed):
 
 
 def encode_labels(y):
-    unique_labels = cpu_np.unique(y)
+    unique_labels = np.unique(y)
     label_to_index = {label: idx for idx, label in enumerate(unique_labels)}
-    y_idx = cpu_np.array([label_to_index[label] for label in y])
+    y_idx = np.array([label_to_index[label] for label in y])
     return y_idx, unique_labels
 
 
 def main():
     print("Loading data...")
     try:
-        dataset = cpu_np.load(DATA_PATH)
+        dataset = np.load(DATA_PATH)
         X_full = dataset["X"]
         y_full = dataset["y"]
     except FileNotFoundError:
@@ -151,8 +150,8 @@ def main():
     if USE_FEEDBACK_DATA:
         X_feedback, y_feedback = load_feedback_data(FEEDBACK_DATA_PATH)
         if X_feedback is not None:
-            X_full = cpu_np.concatenate([X_full, X_feedback], axis=0)
-            y_full = cpu_np.concatenate([y_full, y_feedback], axis=0)
+            X_full = np.concatenate([X_full, X_feedback], axis=0)
+            y_full = np.concatenate([y_full, y_feedback], axis=0)
 
     y_full_idx, unique_labels = encode_labels(y_full)
     num_classes = len(unique_labels)
@@ -168,11 +167,7 @@ def main():
     )
 
     print("Train:", len(X_train), "Val:", len(X_val), "Test:", len(X_test))
-    print("Backend:", "CuPy GPU" if GPU_ENABLED else "NumPy CPU")
-
-    X_train = to_device(X_train)
-    X_val = to_device(X_val)
-    X_test = to_device(X_test)
+    print("Backend: NumPy CPU")
 
     model = StandardCNN(
         input_dim=INPUT_DIM,
@@ -185,7 +180,7 @@ def main():
         print("Epoch", epoch + 1)
         start_time = time.time()
 
-        permutation = cpu_np.random.permutation(len(X_train))
+        permutation = np.random.permutation(len(X_train))
         X_train_shuffled = X_train[permutation]
         y_train_shuffled = y_train[permutation]
 
