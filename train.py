@@ -1,4 +1,8 @@
+import csv
+import json
 import time
+from pathlib import Path
+
 import numpy as np
 from cnn_models import StandardCNN
 
@@ -18,6 +22,36 @@ USE_FEEDBACK_DATA = True
 TEST_RATIO = 0.1
 VAL_RATIO = 0.1
 RANDOM_SEED = 42
+RESULTS_DIR = Path("results") / "baseline"
+
+
+def resolve_data_path(path):
+    local_path = Path(path)
+    if local_path.exists():
+        return local_path
+
+    kaggle_input = Path("/kaggle/input")
+    if kaggle_input.exists():
+        matches = list(kaggle_input.rglob(local_path.name))
+        if matches:
+            return matches[0]
+    return local_path
+
+
+def write_csv(path, fieldnames, rows):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def write_json(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(data, file, indent=2, ensure_ascii=False)
 
 
 def evaluate_model(model, X, y):
@@ -144,13 +178,17 @@ def encode_labels(y):
 
 
 def main():
+    np.random.seed(RANDOM_SEED)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
     print("Loading data...")
+    data_path = resolve_data_path(DATA_PATH)
     try:
-        dataset = np.load(DATA_PATH)
+        dataset = np.load(data_path)
         X_full = dataset["X"]
         y_full = dataset["y"]
     except FileNotFoundError:
-        print("File not found:", DATA_PATH)
+        print("File not found:", data_path)
         return
 
     X_full, y_full = select_subset(
@@ -174,6 +212,11 @@ def main():
         seed=RANDOM_SEED,
     )
 
+    base_train_counts = np.bincount(y_train, minlength=num_classes)
+    val_counts = np.bincount(y_val, minlength=num_classes)
+    test_counts = np.bincount(y_test, minlength=num_classes)
+    feedback_samples = 0
+
     if USE_FEEDBACK_DATA:
         X_feedback, y_feedback = load_feedback_data(
             FEEDBACK_DATA_PATH,
@@ -184,6 +227,51 @@ def main():
             y_feedback_idx = np.searchsorted(unique_labels, y_feedback)
             X_train = np.concatenate([X_train, X_feedback], axis=0)
             y_train = np.concatenate([y_train, y_feedback_idx], axis=0)
+            feedback_samples = len(X_feedback)
+
+    final_train_counts = np.bincount(y_train, minlength=num_classes)
+    split_rows = []
+    for class_index, label in enumerate(unique_labels):
+        split_rows.append({
+            "class_index": class_index,
+            "label": chr(int(label)),
+            "unicode": int(label),
+            "base_train_count": int(base_train_counts[class_index]),
+            "feedback_count": int(final_train_counts[class_index] - base_train_counts[class_index]),
+            "final_train_count": int(final_train_counts[class_index]),
+            "validation_count": int(val_counts[class_index]),
+            "test_count": int(test_counts[class_index]),
+        })
+    write_csv(
+        RESULTS_DIR / "split_summary.csv",
+        [
+            "class_index", "label", "unicode", "base_train_count",
+            "feedback_count", "final_train_count", "validation_count", "test_count",
+        ],
+        split_rows,
+    )
+
+    write_json(RESULTS_DIR / "run_config.json", {
+        "data_path": str(data_path),
+        "model_path": MODEL_PATH,
+        "input_dim": INPUT_DIM,
+        "num_classes": num_classes,
+        "classes": [chr(int(label)) for label in unique_labels],
+        "conv_padding": CONV_PADDING,
+        "epochs": EPOCHS,
+        "learning_rate": LEARNING_RATE,
+        "max_samples": MAX_SAMPLES,
+        "balance_classes": BALANCE_CLASSES,
+        "use_feedback_data": USE_FEEDBACK_DATA,
+        "feedback_samples": feedback_samples,
+        "test_ratio": TEST_RATIO,
+        "validation_ratio": VAL_RATIO,
+        "random_seed": RANDOM_SEED,
+        "train_samples": len(X_train),
+        "validation_samples": len(X_val),
+        "test_samples": len(X_test),
+        "backend": "NumPy CPU",
+    })
 
     print("Train:", len(X_train), "Val:", len(X_val), "Test:", len(X_test))
     print("Backend: NumPy CPU")
@@ -195,6 +283,7 @@ def main():
     )
 
     print("Starting training...")
+    history = []
     for epoch in range(EPOCHS):
         print("Epoch", epoch + 1)
         start_time = time.time()
@@ -218,10 +307,35 @@ def main():
         print("Train Loss:", round(train_loss, 4), "Train Acc:", round(train_acc, 2))
         print("Val Loss:", round(val_loss, 4), "Val Acc:", round(val_acc, 2))
 
+        history.append({
+            "epoch": epoch + 1,
+            "train_loss": float(train_loss),
+            "train_accuracy": float(train_acc),
+            "validation_loss": float(val_loss),
+            "validation_accuracy": float(val_acc),
+            "epoch_seconds": float(end_time - start_time),
+        })
+        write_csv(
+            RESULTS_DIR / "training_history.csv",
+            [
+                "epoch", "train_loss", "train_accuracy",
+                "validation_loss", "validation_accuracy", "epoch_seconds",
+            ],
+            history,
+        )
+
     print("Testing model...")
     test_loss, test_acc = evaluate_model(model, X_test, y_test)
     print("Test Loss:", round(test_loss, 4), "Test Acc:", round(test_acc, 2))
     model.save_weights(MODEL_PATH, class_labels=unique_labels)
+    write_json(RESULTS_DIR / "training_summary.json", {
+        "test_loss": float(test_loss),
+        "test_accuracy": float(test_acc),
+        "total_training_seconds": float(sum(row["epoch_seconds"] for row in history)),
+        "completed_epochs": len(history),
+        "model_path": MODEL_PATH,
+    })
+    print("Saved training records to", RESULTS_DIR)
 
 
 if __name__ == "__main__":
