@@ -3,9 +3,9 @@ import numpy as np
 from cnn_models import StandardCNN
 
 
-DATA_PATH = "emnist_perfect_16x16.npz"
-FEEDBACK_DATA_PATH = "user_feedback_16x16.npz"
-MODEL_PATH = "emnist_brain.npz"
+DATA_PATH = "emnist_47_classes_16x16.npz"
+FEEDBACK_DATA_PATH = "user_feedback_47_classes_16x16.npz"
+MODEL_PATH = "emnist_47_brain.npz"
 
 INPUT_DIM = 16
 CONV_PADDING = 1
@@ -76,7 +76,7 @@ def select_subset(X, y, max_samples, balance_classes, seed):
     return X[indices], y[indices]
 
 
-def load_feedback_data(path):
+def load_feedback_data(path, image_shape, valid_labels):
     try:
         feedback = np.load(path)
     except FileNotFoundError:
@@ -84,6 +84,20 @@ def load_feedback_data(path):
 
     X_feedback = feedback["X"]
     y_feedback = feedback["y"]
+    if len(X_feedback) == 0:
+        return None, None
+
+    if X_feedback.ndim != 3 or X_feedback.shape[1:] != image_shape:
+        print("Ignoring feedback: expected image shape", image_shape)
+        return None, None
+
+    valid_mask = np.isin(y_feedback, valid_labels)
+    ignored_count = int(np.sum(~valid_mask))
+    if ignored_count:
+        print("Ignoring feedback samples with unsupported labels:", ignored_count)
+        X_feedback = X_feedback[valid_mask]
+        y_feedback = y_feedback[valid_mask]
+
     if len(X_feedback) == 0:
         return None, None
 
@@ -147,16 +161,10 @@ def main():
         seed=RANDOM_SEED,
     )
 
-    if USE_FEEDBACK_DATA:
-        X_feedback, y_feedback = load_feedback_data(FEEDBACK_DATA_PATH)
-        if X_feedback is not None:
-            X_full = np.concatenate([X_full, X_feedback], axis=0)
-            y_full = np.concatenate([y_full, y_feedback], axis=0)
-
     y_full_idx, unique_labels = encode_labels(y_full)
     num_classes = len(unique_labels)
     print("Classes:", [chr(label) for label in unique_labels])
-    print("Total samples:", len(X_full))
+    print("Dataset samples:", len(X_full))
 
     X_train, X_val, X_test, y_train, y_val, y_test = stratified_split(
         X_full,
@@ -165,6 +173,17 @@ def main():
         val_ratio=VAL_RATIO,
         seed=RANDOM_SEED,
     )
+
+    if USE_FEEDBACK_DATA:
+        X_feedback, y_feedback = load_feedback_data(
+            FEEDBACK_DATA_PATH,
+            image_shape=X_full.shape[1:],
+            valid_labels=unique_labels,
+        )
+        if X_feedback is not None:
+            y_feedback_idx = np.searchsorted(unique_labels, y_feedback)
+            X_train = np.concatenate([X_train, X_feedback], axis=0)
+            y_train = np.concatenate([y_train, y_feedback_idx], axis=0)
 
     print("Train:", len(X_train), "Val:", len(X_val), "Test:", len(X_test))
     print("Backend: NumPy CPU")

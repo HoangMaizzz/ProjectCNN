@@ -7,9 +7,9 @@ import numpy as np
 from cnn_models import StandardCNN
 
 
-DATA_PATH = "emnist_perfect_16x16.npz"
-MODEL_PATH = "emnist_brain.npz"
-FEEDBACK_DATA_PATH = "user_feedback_16x16.npz"
+DATA_PATH = "emnist_47_classes_16x16.npz"
+MODEL_PATH = "emnist_47_brain.npz"
+FEEDBACK_DATA_PATH = "user_feedback_47_classes_16x16.npz"
 
 
 print("Loading labels...")
@@ -29,6 +29,11 @@ try:
 except FileNotFoundError:
     raise SystemExit(
         f"Model file '{MODEL_PATH}' was not found. Train first with: python train.py"
+    )
+
+if model.class_labels is None or not np.array_equal(model.class_labels, unique_labels):
+    raise SystemExit(
+        "The saved model does not match the 47-class dataset. Train it again with: python train.py"
     )
 
 print("Ready!")
@@ -79,7 +84,7 @@ class DrawingApp:
 
         self.lbl_result = tk.Label(
             root,
-            text="Draw a digit or uppercase letter.",
+            text="Draw a digit, uppercase letter, or supported lowercase letter.",
             font=("Arial", 15),
         )
         self.lbl_result.pack(pady=8)
@@ -142,7 +147,10 @@ class DrawingApp:
         self.image_data.fill(0)
         self.canvas.delete("all")
         self.last_prediction_image = None
-        self.lbl_result.config(text="Draw a digit or uppercase letter.", fg="black")
+        self.lbl_result.config(
+            text="Draw a digit, uppercase letter, or supported lowercase letter.",
+            fg="black",
+        )
         self.lbl_feedback.config(text="")
         self.set_feedback_state(False)
         self.entry_correct.config(state=tk.DISABLED)
@@ -198,13 +206,13 @@ class DrawingApp:
         self.entry_correct.config(state=tk.NORMAL)
         self.btn_save.config(state=tk.NORMAL)
         self.entry_correct.focus_set()
-        self.lbl_feedback.config(text="Enter the correct label, for example 7 or A.")
+        self.lbl_feedback.config(text="Enter the exact label, for example 7, A, or a.")
 
     def save_correction(self):
         if self.last_prediction_image is None:
             return
 
-        label_text = self.entry_correct.get().strip().upper()
+        label_text = self.entry_correct.get().strip()
         if len(label_text) != 1 or label_text not in valid_chars:
             allowed = "".join(valid_chars.keys())
             messagebox.showerror("Invalid label", f"Use one of these labels: {allowed}")
