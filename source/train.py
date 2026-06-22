@@ -13,14 +13,8 @@ MODEL_PATH = "emnist_47_brain.npz"
 
 INPUT_DIM = 16
 CONV_PADDING = 1
-DENSE_HIDDEN_NODES = 64
 EPOCHS = 10
 LEARNING_RATE = 0.008
-LR_DECAY_FACTOR = 0.5
-LR_DECAY_EPOCHS = (6, 9)
-EARLY_STOPPING_PATIENCE = 4
-EARLY_STOPPING_MIN_DELTA = 1e-4
-EARLY_STOPPING_MIN_EPOCHS = 7
 
 MAX_SAMPLES = 10000
 BALANCE_CLASSES = True
@@ -29,13 +23,6 @@ TEST_RATIO = 0.1
 VAL_RATIO = 0.1
 RANDOM_SEED = 42
 RESULTS_DIR = Path("results") / "baseline"
-
-
-def learning_rate_for_epoch(base_learning_rate, epoch_number):
-    if epoch_number < 1:
-        raise ValueError("epoch_number must start at 1")
-    decay_count = sum(epoch_number >= milestone for milestone in LR_DECAY_EPOCHS)
-    return base_learning_rate * (LR_DECAY_FACTOR ** decay_count)
 
 
 def resolve_data_path(path):
@@ -271,14 +258,8 @@ def main():
         "num_classes": num_classes,
         "classes": [chr(int(label)) for label in unique_labels],
         "conv_padding": CONV_PADDING,
-        "dense_hidden_nodes": DENSE_HIDDEN_NODES,
         "epochs": EPOCHS,
-        "initial_learning_rate": LEARNING_RATE,
-        "learning_rate_decay_factor": LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(LR_DECAY_EPOCHS),
-        "early_stopping_patience": EARLY_STOPPING_PATIENCE,
-        "early_stopping_min_delta": EARLY_STOPPING_MIN_DELTA,
-        "early_stopping_min_epochs": EARLY_STOPPING_MIN_EPOCHS,
+        "learning_rate": LEARNING_RATE,
         "max_samples": MAX_SAMPLES,
         "balance_classes": BALANCE_CLASSES,
         "use_feedback_data": USE_FEEDBACK_DATA,
@@ -299,19 +280,12 @@ def main():
         input_dim=INPUT_DIM,
         num_classes=num_classes,
         conv_padding=CONV_PADDING,
-        hidden_nodes=DENSE_HIDDEN_NODES,
     )
 
     print("Starting training...")
     history = []
-    best_val_loss = float("inf")
-    best_epoch = 0
-    epochs_without_improvement = 0
-    stopped_early = False
-
     for epoch in range(EPOCHS):
-        current_learning_rate = learning_rate_for_epoch(LEARNING_RATE, epoch + 1)
-        print("Epoch", epoch + 1, "Learning rate:", current_learning_rate)
+        print("Epoch", epoch + 1)
         start_time = time.time()
 
         permutation = np.random.permutation(len(X_train))
@@ -319,7 +293,7 @@ def main():
         y_train_shuffled = y_train[permutation]
 
         for i, (image, label) in enumerate(zip(X_train_shuffled, y_train_shuffled)):
-            model.train_step(image, int(label), learning_rate=current_learning_rate)
+            model.train_step(image, int(label), learning_rate=LEARNING_RATE)
             if (i + 1) % 500 == 0:
                 print("Training image:", i + 1)
 
@@ -333,76 +307,32 @@ def main():
         print("Train Loss:", round(train_loss, 4), "Train Acc:", round(train_acc, 2))
         print("Val Loss:", round(val_loss, 4), "Val Acc:", round(val_acc, 2))
 
-        is_best = val_loss < (best_val_loss - EARLY_STOPPING_MIN_DELTA)
-        if is_best:
-            best_val_loss = float(val_loss)
-            best_epoch = epoch + 1
-            epochs_without_improvement = 0
-            model.save_weights(MODEL_PATH, class_labels=unique_labels)
-            print("Saved new best checkpoint at epoch", best_epoch)
-        else:
-            epochs_without_improvement += 1
-            print(
-                "No validation improvement:",
-                epochs_without_improvement,
-                "/",
-                EARLY_STOPPING_PATIENCE,
-            )
-
         history.append({
             "epoch": epoch + 1,
-            "learning_rate": float(current_learning_rate),
             "train_loss": float(train_loss),
             "train_accuracy": float(train_acc),
             "validation_loss": float(val_loss),
             "validation_accuracy": float(val_acc),
             "epoch_seconds": float(end_time - start_time),
-            "is_best_checkpoint": bool(is_best),
         })
         write_csv(
             RESULTS_DIR / "training_history.csv",
             [
-                "epoch", "learning_rate", "train_loss", "train_accuracy",
+                "epoch", "train_loss", "train_accuracy",
                 "validation_loss", "validation_accuracy", "epoch_seconds",
-                "is_best_checkpoint",
             ],
             history,
         )
 
-        if (
-            epoch + 1 >= EARLY_STOPPING_MIN_EPOCHS
-            and epochs_without_improvement >= EARLY_STOPPING_PATIENCE
-        ):
-            stopped_early = True
-            print("Early stopping triggered after epoch", epoch + 1)
-            break
-
-    if best_epoch == 0:
-        raise RuntimeError("Training did not produce a finite validation checkpoint.")
-
-    print("Loading best checkpoint from epoch", best_epoch)
-    model.load_weights(MODEL_PATH)
-    print("Testing best checkpoint...")
+    print("Testing model...")
     test_loss, test_acc = evaluate_model(model, X_test, y_test)
     print("Test Loss:", round(test_loss, 4), "Test Acc:", round(test_acc, 2))
+    model.save_weights(MODEL_PATH, class_labels=unique_labels)
     write_json(RESULTS_DIR / "training_summary.json", {
         "test_loss": float(test_loss),
         "test_accuracy": float(test_acc),
         "total_training_seconds": float(sum(row["epoch_seconds"] for row in history)),
         "completed_epochs": len(history),
-        "best_epoch": best_epoch,
-        "best_validation_loss": best_val_loss,
-        "best_validation_accuracy": float(history[best_epoch - 1]["validation_accuracy"]),
-        "stopped_early": stopped_early,
-        "dense_hidden_nodes": DENSE_HIDDEN_NODES,
-        "model_parameters": int(sum(
-            array.size for array in [
-                model.layers[0].filters, model.layers[0].biases,
-                model.layers[3].filters, model.layers[3].biases,
-                model.layers[7].weights, model.layers[7].biases,
-                model.layers[9].weights, model.layers[9].biases,
-            ]
-        )),
         "model_path": MODEL_PATH,
     })
     print("Saved training records to", RESULTS_DIR)

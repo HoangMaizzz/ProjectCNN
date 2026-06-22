@@ -60,7 +60,6 @@ def load_model(class_labels):
         input_dim=train.INPUT_DIM,
         num_classes=len(class_labels),
         conv_padding=train.CONV_PADDING,
-        hidden_nodes=train.DENSE_HIDDEN_NODES,
     )
     model.load_weights(train.MODEL_PATH)
     if model.class_labels is None or not np.array_equal(model.class_labels, class_labels):
@@ -455,7 +454,6 @@ def package_results():
             "evaluate.py",
             "run_experiments.py",
             "run_all_evaluations.py",
-            "test_brain.py",
         ]
         for source_name in source_files:
             source_path = Path(source_name)

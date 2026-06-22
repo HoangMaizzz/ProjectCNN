@@ -1,0 +1,19 @@
+{
+  "max_samples_requested": 7050,
+  "samples_used": 7050,
+  "train_samples": 5640,
+  "validation_samples": 705,
+  "test_samples": 705,
+  "learning_rate": 0.008,
+  "padding": 1,
+  "epochs": 10,
+  "final_validation_loss": 0.9275026534406526,
+  "final_validation_accuracy": 73.75886524822694,
+  "test_loss": 1.0472175767676646,
+  "test_accuracy": 0.7319148936170212,
+  "macro_f1": 0.7333902093546595,
+  "training_and_test_seconds": 5399.648282830001,
+  "model_parameters": 76527,
+  "mean_inference_ms": 34.908899170211775,
+  "run_id": "samples_7050_lr_0.008_pad_1_epochs_10"
+}

@@ -1,5 +1,7 @@
 import os
 import tkinter as tk
+import zipfile
+from pathlib import Path
 from tkinter import messagebox
 
 import numpy as np
@@ -7,14 +9,54 @@ import numpy as np
 from cnn_models import StandardCNN
 
 
-DATA_PATH = "emnist_47_classes_16x16.npz"
 MODEL_PATH = "emnist_47_brain.npz"
+MODEL_ARCHIVE_PATH = "cnn_evaluation_results.zip"
 FEEDBACK_DATA_PATH = "user_feedback_47_classes_16x16.npz"
 
 
-print("Loading labels...")
-dataset = np.load(DATA_PATH)
-unique_labels = np.unique(dataset["y"])
+def prepare_model_file():
+    model_path = Path(MODEL_PATH)
+    if model_path.exists():
+        return model_path
+
+    archive_path = Path(MODEL_ARCHIVE_PATH)
+    if not archive_path.exists():
+        raise SystemExit(
+            f"Neither '{MODEL_PATH}' nor '{MODEL_ARCHIVE_PATH}' was found. "
+            "Download the Kaggle evaluation ZIP or copy the trained model here."
+        )
+
+    with zipfile.ZipFile(archive_path, "r") as archive:
+        candidates = [
+            name for name in archive.namelist()
+            if Path(name).name == MODEL_PATH
+        ]
+        if not candidates:
+            raise SystemExit(
+                f"'{MODEL_ARCHIVE_PATH}' does not contain '{MODEL_PATH}'."
+            )
+        model_path.write_bytes(archive.read(candidates[0]))
+
+    print("Extracted model from", MODEL_ARCHIVE_PATH)
+    return model_path
+
+
+model_path = prepare_model_file()
+
+print("Loading labels from model...")
+with np.load(model_path, allow_pickle=False) as saved_model:
+    if "class_labels" not in saved_model.files:
+        raise SystemExit("The trained model does not contain class labels.")
+    unique_labels = np.asarray(saved_model["class_labels"])
+    hidden_nodes = int(
+        saved_model["hidden_nodes"].item()
+        if "hidden_nodes" in saved_model.files
+        else len(saved_model["dense1_biases"])
+    )
+
+if unique_labels.ndim != 1 or len(unique_labels) != 47:
+    raise SystemExit("The trained model must contain exactly 47 class labels.")
+
 valid_chars = {chr(int(label)): int(label) for label in unique_labels}
 
 print("Loading model...")
@@ -22,10 +64,11 @@ model = StandardCNN(
     input_dim=16,
     num_classes=len(unique_labels),
     conv_padding=1,
+    hidden_nodes=hidden_nodes,
 )
 
 try:
-    model.load_weights(MODEL_PATH)
+    model.load_weights(model_path)
 except FileNotFoundError:
     raise SystemExit(
         f"Model file '{MODEL_PATH}' was not found. Train first with: python train.py"

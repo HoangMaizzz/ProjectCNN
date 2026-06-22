@@ -3,8 +3,11 @@ from layers import Conv2D, ReLU, MaxPool2D, Flatten, Dense, Softmax
 
 
 class StandardCNN:
-    def __init__(self, input_dim=16, num_classes=94, conv_padding=1):
+    def __init__(self, input_dim=16, num_classes=94, conv_padding=1, hidden_nodes=64):
+        self.input_dim = input_dim
         self.num_classes = num_classes
+        self.conv_padding = conv_padding
+        self.hidden_nodes = hidden_nodes
         self.class_labels = None
 
         conv1_out = input_dim + (2 * conv_padding) - 3 + 1
@@ -23,9 +26,9 @@ class StandardCNN:
             ReLU(),
             MaxPool2D(pool_size=2),
             Flatten(),
-            Dense(input_len=flattened_size, nodes=128),
+            Dense(input_len=flattened_size, nodes=hidden_nodes),
             ReLU(),
-            Dense(input_len=128, nodes=num_classes),
+            Dense(input_len=hidden_nodes, nodes=num_classes),
             Softmax(),
         ]
 
@@ -64,6 +67,10 @@ class StandardCNN:
             "dense1_biases": self.layers[7].biases,
             "dense2_weights": self.layers[9].weights,
             "dense2_biases": self.layers[9].biases,
+            "input_dim": np.array(self.input_dim, dtype=np.int32),
+            "num_classes": np.array(self.num_classes, dtype=np.int32),
+            "conv_padding": np.array(self.conv_padding, dtype=np.int32),
+            "hidden_nodes": np.array(self.hidden_nodes, dtype=np.int32),
         }
 
         if class_labels is not None:
@@ -74,18 +81,44 @@ class StandardCNN:
         print("Saved model weights to", file_name)
 
     def load_weights(self, file_name):
-        data = np.load(file_name)
-        self.layers[0].filters = data["conv1_filters"]
-        if "conv1_biases" in data.files:
-            self.layers[0].biases = data["conv1_biases"]
-        self.layers[3].filters = data["conv2_filters"]
-        if "conv2_biases" in data.files:
-            self.layers[3].biases = data["conv2_biases"]
-        self.layers[7].weights = data["dense1_weights"]
-        self.layers[7].biases = data["dense1_biases"]
-        self.layers[9].weights = data["dense2_weights"]
-        self.layers[9].biases = data["dense2_biases"]
-        self.class_labels = data["class_labels"] if "class_labels" in data.files else None
+        with np.load(file_name, allow_pickle=False) as data:
+            loaded = {
+                "conv1_filters": np.array(data["conv1_filters"], copy=True),
+                "conv2_filters": np.array(data["conv2_filters"], copy=True),
+                "dense1_weights": np.array(data["dense1_weights"], copy=True),
+                "dense1_biases": np.array(data["dense1_biases"], copy=True),
+                "dense2_weights": np.array(data["dense2_weights"], copy=True),
+                "dense2_biases": np.array(data["dense2_biases"], copy=True),
+            }
+            expected_shapes = {
+                "conv1_filters": self.layers[0].filters.shape,
+                "conv2_filters": self.layers[3].filters.shape,
+                "dense1_weights": self.layers[7].weights.shape,
+                "dense1_biases": self.layers[7].biases.shape,
+                "dense2_weights": self.layers[9].weights.shape,
+                "dense2_biases": self.layers[9].biases.shape,
+            }
+            for name, expected_shape in expected_shapes.items():
+                if loaded[name].shape != expected_shape:
+                    raise ValueError(
+                        f"Model shape mismatch for {name}: expected {expected_shape}, "
+                        f"found {loaded[name].shape}. Retrain with the current architecture."
+                    )
+
+            self.layers[0].filters = loaded["conv1_filters"]
+            if "conv1_biases" in data.files:
+                self.layers[0].biases = np.array(data["conv1_biases"], copy=True)
+            self.layers[3].filters = loaded["conv2_filters"]
+            if "conv2_biases" in data.files:
+                self.layers[3].biases = np.array(data["conv2_biases"], copy=True)
+            self.layers[7].weights = loaded["dense1_weights"]
+            self.layers[7].biases = loaded["dense1_biases"]
+            self.layers[9].weights = loaded["dense2_weights"]
+            self.layers[9].biases = loaded["dense2_biases"]
+            self.class_labels = (
+                np.array(data["class_labels"], copy=True)
+                if "class_labels" in data.files else None
+            )
         print("Loaded model weights from", file_name)
 
     def predict(self, image):

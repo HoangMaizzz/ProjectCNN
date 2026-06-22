@@ -60,30 +60,6 @@ def prepare_data(max_samples):
     return X_train, X_val, X_test, y_train, y_val, y_test, class_labels
 
 
-def capture_model_state(model):
-    return {
-        "conv1_filters": model.layers[0].filters.copy(),
-        "conv1_biases": model.layers[0].biases.copy(),
-        "conv2_filters": model.layers[3].filters.copy(),
-        "conv2_biases": model.layers[3].biases.copy(),
-        "dense1_weights": model.layers[7].weights.copy(),
-        "dense1_biases": model.layers[7].biases.copy(),
-        "dense2_weights": model.layers[9].weights.copy(),
-        "dense2_biases": model.layers[9].biases.copy(),
-    }
-
-
-def restore_model_state(model, state):
-    model.layers[0].filters = state["conv1_filters"]
-    model.layers[0].biases = state["conv1_biases"]
-    model.layers[3].filters = state["conv2_filters"]
-    model.layers[3].biases = state["conv2_biases"]
-    model.layers[7].weights = state["dense1_weights"]
-    model.layers[7].biases = state["dense1_biases"]
-    model.layers[9].weights = state["dense2_weights"]
-    model.layers[9].biases = state["dense2_biases"]
-
-
 def train_configuration(max_samples, learning_rate, padding, epochs):
     np.random.seed(train.RANDOM_SEED)
     X_train, X_val, X_test, y_train, y_val, y_test, class_labels = prepare_data(max_samples)
@@ -91,19 +67,11 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
         input_dim=train.INPUT_DIM,
         num_classes=len(class_labels),
         conv_padding=padding,
-        hidden_nodes=train.DENSE_HIDDEN_NODES,
     )
 
     history = []
-    best_state = None
-    best_validation_loss = float("inf")
-    best_validation_accuracy = 0.0
-    best_epoch = 0
-    epochs_without_improvement = 0
-    stopped_early = False
     total_start = time.perf_counter()
     for epoch in range(epochs):
-        current_learning_rate = train.learning_rate_for_epoch(learning_rate, epoch + 1)
         epoch_start = time.perf_counter()
         permutation = np.random.permutation(len(X_train))
         online_loss = 0.0
@@ -113,7 +81,7 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
             loss, correct = model.train_step(
                 X_train[sample_index],
                 int(y_train[sample_index]),
-                learning_rate=current_learning_rate,
+                learning_rate=learning_rate,
             )
             online_loss += float(loss)
             online_correct += int(correct)
@@ -122,46 +90,19 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
 
         validation_loss, validation_accuracy = train.evaluate_model(model, X_val, y_val)
         epoch_seconds = time.perf_counter() - epoch_start
-        is_best = validation_loss < (
-            best_validation_loss - train.EARLY_STOPPING_MIN_DELTA
-        )
-        if is_best:
-            best_validation_loss = float(validation_loss)
-            best_validation_accuracy = float(validation_accuracy)
-            best_epoch = epoch + 1
-            best_state = capture_model_state(model)
-            epochs_without_improvement = 0
-        else:
-            epochs_without_improvement += 1
-
         history.append({
             "epoch": epoch + 1,
-            "learning_rate": float(current_learning_rate),
             "online_train_loss": online_loss / len(X_train),
             "online_train_accuracy": (online_correct / len(X_train)) * 100,
             "validation_loss": float(validation_loss),
             "validation_accuracy": float(validation_accuracy),
             "epoch_seconds": epoch_seconds,
-            "is_best_checkpoint": bool(is_best),
         })
         print(
             "Epoch", epoch + 1, "/", epochs,
-            "lr=", current_learning_rate,
             "val_acc=", round(validation_accuracy, 2),
             "time=", round(epoch_seconds, 2), "s",
         )
-
-        if (
-            epoch + 1 >= train.EARLY_STOPPING_MIN_EPOCHS
-            and epochs_without_improvement >= train.EARLY_STOPPING_PATIENCE
-        ):
-            stopped_early = True
-            print("Early stopping at epoch", epoch + 1, "best epoch:", best_epoch)
-            break
-
-    if best_state is None:
-        raise RuntimeError("Experiment did not produce a finite validation checkpoint.")
-    restore_model_state(model, best_state)
 
     prediction_result = evaluate.predict_dataset(model, X_test, y_test)
     matrix = evaluate.confusion_matrix(
@@ -179,17 +120,8 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
         "validation_samples": len(X_val),
         "test_samples": len(X_test),
         "learning_rate": learning_rate,
-        "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(train.LR_DECAY_EPOCHS),
         "padding": padding,
-        "hidden_nodes": train.DENSE_HIDDEN_NODES,
         "epochs": epochs,
-        "completed_epochs": len(history),
-        "best_epoch": best_epoch,
-        "best_validation_loss": best_validation_loss,
-        "best_validation_accuracy": best_validation_accuracy,
-        "stopped_early": stopped_early,
-        "early_stopping_min_epochs": train.EARLY_STOPPING_MIN_EPOCHS,
         "final_validation_loss": history[-1]["validation_loss"],
         "final_validation_accuracy": history[-1]["validation_accuracy"],
         "test_loss": float(np.mean(prediction_result["losses"])),
@@ -212,13 +144,7 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
         print("Reusing completed configuration:", key)
         return cache[key]
 
-    schedule_tag = "-".join(str(value) for value in train.LR_DECAY_EPOCHS)
-    run_id = (
-        f"samples_{max_samples}_lr_{learning_rate:g}_pad_{padding}_epochs_{epochs}"
-        f"_h{train.DENSE_HIDDEN_NODES}_decay{train.LR_DECAY_FACTOR:g}"
-        f"_m{schedule_tag}_es{train.EARLY_STOPPING_PATIENCE}"
-        f"_min{train.EARLY_STOPPING_MIN_EPOCHS}"
-    )
+    run_id = f"samples_{max_samples}_lr_{learning_rate:g}_pad_{padding}_epochs_{epochs}"
     history_path = OUTPUT_DIR / "histories" / f"{run_id}.csv"
     summary_path = OUTPUT_DIR / "summaries" / f"{run_id}.json"
     if history_path.exists() and summary_path.exists():
@@ -227,7 +153,7 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
         with history_path.open("r", encoding="utf-8") as file:
             history = list(csv.DictReader(file))
         numeric_history_fields = [
-            "learning_rate", "online_train_loss", "online_train_accuracy", "validation_loss",
+            "online_train_loss", "online_train_accuracy", "validation_loss",
             "validation_accuracy", "epoch_seconds",
         ]
         for row in history:
@@ -246,9 +172,8 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
     write_csv(
         history_path,
         [
-            "run_id", "epoch", "learning_rate", "online_train_loss", "online_train_accuracy",
+            "run_id", "epoch", "online_train_loss", "online_train_accuracy",
             "validation_loss", "validation_accuracy", "epoch_seconds",
-            "is_best_checkpoint",
         ],
         history,
     )
@@ -336,12 +261,6 @@ def main():
         "learning_rates": LEARNING_RATES,
         "paddings": PADDINGS,
         "control_max_samples": CONTROL_MAX_SAMPLES,
-        "dense_hidden_nodes": train.DENSE_HIDDEN_NODES,
-        "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(train.LR_DECAY_EPOCHS),
-        "early_stopping_patience": train.EARLY_STOPPING_PATIENCE,
-        "early_stopping_min_delta": train.EARLY_STOPPING_MIN_DELTA,
-        "early_stopping_min_epochs": train.EARLY_STOPPING_MIN_EPOCHS,
         "random_seed": train.RANDOM_SEED,
         "run_sample_size_experiment": RUN_SAMPLE_SIZE_EXPERIMENT,
         "run_learning_rate_experiment": RUN_LEARNING_RATE_EXPERIMENT,
