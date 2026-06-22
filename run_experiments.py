@@ -100,10 +100,12 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
     best_validation_accuracy = 0.0
     best_epoch = 0
     epochs_without_improvement = 0
+    plateau_epochs = 0
+    current_learning_rate = learning_rate
+    learning_rate_reductions = 0
     stopped_early = False
     total_start = time.perf_counter()
     for epoch in range(epochs):
-        current_learning_rate = train.learning_rate_for_epoch(learning_rate, epoch + 1)
         epoch_start = time.perf_counter()
         permutation = np.random.permutation(len(X_train))
         online_loss = 0.0
@@ -131,12 +133,29 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
             best_epoch = epoch + 1
             best_state = capture_model_state(model)
             epochs_without_improvement = 0
+            plateau_epochs = 0
         else:
             epochs_without_improvement += 1
+            plateau_epochs += 1
+
+        next_learning_rate = current_learning_rate
+        learning_rate_reduced = False
+        if (
+            not is_best
+            and plateau_epochs >= train.LR_PLATEAU_PATIENCE
+            and current_learning_rate > train.MIN_LEARNING_RATE
+        ):
+            next_learning_rate = train.decay_learning_rate(current_learning_rate)
+            learning_rate_reduced = next_learning_rate < current_learning_rate
+            plateau_epochs = 0
+            if learning_rate_reduced:
+                learning_rate_reductions += 1
 
         history.append({
             "epoch": epoch + 1,
             "learning_rate": float(current_learning_rate),
+            "next_learning_rate": float(next_learning_rate),
+            "learning_rate_reduced": bool(learning_rate_reduced),
             "online_train_loss": online_loss / len(X_train),
             "online_train_accuracy": (online_correct / len(X_train)) * 100,
             "validation_loss": float(validation_loss),
@@ -150,6 +169,8 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
             "val_acc=", round(validation_accuracy, 2),
             "time=", round(epoch_seconds, 2), "s",
         )
+
+        current_learning_rate = next_learning_rate
 
         if (
             epoch + 1 >= train.EARLY_STOPPING_MIN_EPOCHS
@@ -180,7 +201,11 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
         "test_samples": len(X_test),
         "learning_rate": learning_rate,
         "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(train.LR_DECAY_EPOCHS),
+        "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+        "learning_rate_plateau_patience": train.LR_PLATEAU_PATIENCE,
+        "minimum_learning_rate": train.MIN_LEARNING_RATE,
+        "final_learning_rate": float(current_learning_rate),
+        "learning_rate_reductions": learning_rate_reductions,
         "padding": padding,
         "hidden_nodes": train.DENSE_HIDDEN_NODES,
         "epochs": epochs,
@@ -212,11 +237,11 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
         print("Reusing completed configuration:", key)
         return cache[key]
 
-    schedule_tag = "-".join(str(value) for value in train.LR_DECAY_EPOCHS)
     run_id = (
         f"samples_{max_samples}_lr_{learning_rate:g}_pad_{padding}_epochs_{epochs}"
         f"_h{train.DENSE_HIDDEN_NODES}_decay{train.LR_DECAY_FACTOR:g}"
-        f"_m{schedule_tag}_es{train.EARLY_STOPPING_PATIENCE}"
+        f"_plateau{train.LR_PLATEAU_PATIENCE}_minlr{train.MIN_LEARNING_RATE:g}"
+        f"_es{train.EARLY_STOPPING_PATIENCE}"
         f"_min{train.EARLY_STOPPING_MIN_EPOCHS}"
     )
     history_path = OUTPUT_DIR / "histories" / f"{run_id}.csv"
@@ -227,7 +252,8 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
         with history_path.open("r", encoding="utf-8") as file:
             history = list(csv.DictReader(file))
         numeric_history_fields = [
-            "learning_rate", "online_train_loss", "online_train_accuracy", "validation_loss",
+            "learning_rate", "next_learning_rate", "online_train_loss",
+            "online_train_accuracy", "validation_loss",
             "validation_accuracy", "epoch_seconds",
         ]
         for row in history:
@@ -246,7 +272,8 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
     write_csv(
         history_path,
         [
-            "run_id", "epoch", "learning_rate", "online_train_loss", "online_train_accuracy",
+            "run_id", "epoch", "learning_rate", "next_learning_rate",
+            "learning_rate_reduced", "online_train_loss", "online_train_accuracy",
             "validation_loss", "validation_accuracy", "epoch_seconds",
             "is_best_checkpoint",
         ],
@@ -338,7 +365,9 @@ def main():
         "control_max_samples": CONTROL_MAX_SAMPLES,
         "dense_hidden_nodes": train.DENSE_HIDDEN_NODES,
         "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(train.LR_DECAY_EPOCHS),
+        "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+        "learning_rate_plateau_patience": train.LR_PLATEAU_PATIENCE,
+        "minimum_learning_rate": train.MIN_LEARNING_RATE,
         "early_stopping_patience": train.EARLY_STOPPING_PATIENCE,
         "early_stopping_min_delta": train.EARLY_STOPPING_MIN_DELTA,
         "early_stopping_min_epochs": train.EARLY_STOPPING_MIN_EPOCHS,

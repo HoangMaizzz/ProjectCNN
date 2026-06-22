@@ -1,636 +1,475 @@
-\documentclass[a4paper, 12pt]{extreport}
-\usepackage{xcolor}
-\usepackage{color}
-\usepackage[unicode]{hyperref}
-\usepackage[nottoc,numbib]{tocbibind}
-\hypersetup{colorlinks=true, urlcolor=black, linkcolor=black, unicode=true}
-% \usepackage[utf8]{vietnam}
-\usepackage{fancybox}
-\usepackage{minted}
-\usepackage{xurl}
-\usepackage{frame}
-\usepackage{framed}
-\usepackage{graphicx}
-\usepackage{indentfirst}
-\usepackage{comment}
-\usepackage[skip=10pt plus1pt, indent=25pt]{parskip}
-\usepackage[a4paper, left=25mm, right=20mm, top=25mm, bottom=25mm]{geometry}
-\usepackage{tikz}
-\usepackage{subfig}
-\usepackage{pgfplots}
-\usepackage[justification=centering]{caption}
-\usepackage{titlesec}    
-% \usepackage{times}
-\usepackage{amssymb}
-\usepackage{amsmath}
+\documentclass[a4paper,12pt]{extreport}
 
-\usepackage{mathpple}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathpazo}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{caption}
+\usepackage{enumitem}
 \usepackage{listings}
-\usepackage{scrextend}
-\definecolor{dkgreen}{rgb}{0,0.6,0}
-\definecolor{gray}{rgb}{0.5,0.5,0.5}
-\definecolor{mauve}{rgb}{0.58,0,0.82}
-\lstset{frame=tb,
-  language=C++,
-  aboveskip=3mm,
-  belowskip=1mm,
-  showstringspaces=false,
-  columns=flexible,
-  basicstyle={\small\ttfamily},
-  numbers=none,
-  numberstyle=\tiny\color{gray},
-  keywordstyle=\color{blue},
-  commentstyle=\color{dkgreen},
-  stringstyle=\color{mauve},
-  breaklines=true,
-  breakatwhitespace=true,
-  tabsize=3
+\usepackage{microtype}
+
+\geometry{a4paper,left=25mm,right=20mm,top=25mm,bottom=25mm}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
+\captionsetup{justification=centering}
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{2}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.4em}
+\renewcommand{\arraystretch}{1.2}
+
+\lstset{
+    language=Python,
+    basicstyle=\small\ttfamily,
+    frame=single,
+    breaklines=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!45!black},
+    stringstyle=\color{purple}
 }
 
-% \title{Business Intelligence: \\Customer Review Sentiment Analysis}
-% \author{Nguyen Duy Long, Ho Viet Duc Luong, Ngo Tran Anh Thu}
-% \date{November 2024}
-\usepackage[backend=bibtex,style=ieee]{biblatex} 
-\addbibresource{references.bib}
+% If an image has not been uploaded yet, this macro leaves a visible frame
+% containing the exact expected file name.
+\newcommand{\reportfigure}[4][0.95\linewidth]{%
+\begin{figure}[H]
+    \centering
+    \IfFileExists{#2}{%
+        \includegraphics[width=#1]{#2}%
+    }{%
+        \fbox{\parbox[c][6cm][c]{0.9\linewidth}{%
+            \centering Expected image file:\\[0.5em]
+            \texttt{\detokenize{#2}}%
+        }}%
+    }
+    \caption{#3}
+    \label{#4}
+\end{figure}
+}
+
 \begin{document}
+
+% =============================================================================
+% Cover page
+% =============================================================================
+\begin{titlepage}
 \thispagestyle{empty}
-
 \begin{center}
-    \begin{large}
-        \textcolor[rgb]{1.00,0.00,0.00}{\fontfamily{cmr} HANOI UNIVERSITY OF SCIENCE AND TECHNOLOGY}
-    \end{large} \\
-    \begin{large}
-        \textcolor[rgb]{1.00,0.00,0.00}{\fontfamily{qtm}School of Information and Communications Technology}
-    \end{large} \\
+    {\large\color{red} HANOI UNIVERSITY OF SCIENCE AND TECHNOLOGY}\\[0.3cm]
+    {\large\color{red} School of Information and Communications Technology}\\[0.6cm]
+    \textbf{-------------------- $\ast$ --------------------}\\[1.2cm]
 
-    \textbf{--------------------  *  ---------------------}\\[1.5cm]
+    \IfFileExists{hustss.png}{
+        \includegraphics[width=4cm]{hustss.png}
+    }{
+        \fbox{\parbox[c][4cm][c]{4cm}{\centering University logo\\\texttt{hustss.png}}}
+    }\\[1.2cm]
 
-    \includegraphics[width=4cm, height=5.6cm]{hustss.png}\\[2.5cm]
-        {\fontsize{32pt}{1}\selectfont \textbf{CAPSTONE PROJECT}}\\[.5cm]
-    {\fontsize{20pt}{1}\selectfont INTRODUCTION TO BUSINESS ANALYTICS}\\[01cm]
-    {\fontsize{18pt}{1}\selectfont \textbf{Telecom Subscription Churn \& Retention Strategy}}\\[1.5cm]
+    {\fontsize{28pt}{34pt}\selectfont\textbf{PROJECT REPORT}}\\[0.8cm]
+    {\fontsize{20pt}{25pt}\selectfont\textbf{A FROM-SCRATCH CONVOLUTIONAL NEURAL NETWORK}}\\[0.25cm]
+    {\fontsize{18pt}{23pt}\selectfont FOR 16$\times$16 HANDWRITTEN CHARACTER RECOGNITION}\\[0.25cm]
+    {\fontsize{16pt}{20pt}\selectfont WITH USER CORRECTION COLLECTION}
 \end{center}
 
-
-
-\vspace{1.5cm}
+\vfill
 \begin{center}
-    \large
-    \renewcommand{\arraystretch}{1.5}
-    \begin{tabular}{@{}ll@{}}
-        \textbf{Supervisor:} & \textcolor{blue}{Assoc. Prof. Nguyen Binh Minh} \\
-        \textbf{Student:} & Mai Vu Hoang \quad 202416695
-    \end{tabular}
+\large
+\begin{tabular}{@{}ll@{}}
+    \textbf{Supervisor:} & Assoc. Prof. Nguyen Binh Minh \\
+    \textbf{Student:} & Mai Vu Hoang \\
+    \textbf{Student ID:} & 202416695
+\end{tabular}
 \end{center}
 
-    \vspace{2.5cm}
+\vfill
 \begin{center}
-        {\fontsize{16pt}{1}\selectfont Ha Noi}\\
-        {\fontsize{16pt}{1}\today}
+    {\large Ha Noi, \the\year}
 \end{center}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\setcounter{tocdepth}{1}
-\newpage
+\end{titlepage}
 
-% \begin{abstract}
+\pagenumbering{roman}
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+This project presents a lightweight Convolutional Neural Network (CNN) implemented from scratch with NumPy for recognizing handwritten characters on binary $16\times16$ grids. The system uses a prepared 47-class EMNIST Balanced dataset containing digits, uppercase letters, and 11 distinct lowercase classes. To reduce overfitting and computation, the current architecture preserves two convolutional blocks but reduces the dense hidden layer from 128 to 64 units, resulting in 40,687 trainable parameters. Training includes best-checkpoint selection, early stopping, and adaptive learning-rate reduction when validation loss stops improving.
 
-    
-% \end{abstract}
+% TODO_NEW_BENCHMARK: Replace the provisional result sentence after rerunning Dense-64.
+The current document temporarily uses figures and numerical results exported by the previous Dense-128 benchmark so that the report layout can be completed before the new run finishes. That benchmark achieved 72.54\% test accuracy and 0.7230 macro-F1. All provisional values are explicitly identified and must be replaced with the Dense-64 outputs before final submission.
+
+\noindent\textbf{Keywords:} optical character recognition, handwritten character recognition, convolutional neural network, EMNIST, NumPy, low-resolution images.
+
 \tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+\pagenumbering{arabic}
 
+% =============================================================================
 \chapter{Introduction}
 
 \section{Problem Statement}
-Optical Character Recognition (OCR) is a well-established field that has achieved high accuracy in processing standard, high-resolution documents. However, applying these techniques to severely constrained spatial grids—specifically 16x16 binary pixel matrices—presents notable practical challenges. At this extreme low resolution, the morphological properties of text are highly degraded. Continuous curves and diagonal strokes suffer from severe aliasing, leading to a massive loss of geometric information.
+Optical Character Recognition (OCR) converts visual symbols into machine-readable labels. Although modern OCR systems often use deep architectures and optimized tensor frameworks, this project studies a constrained educational setting: recognizing one character from a binary $16\times16$ image using a CNN whose layers, forward propagation, backward propagation, and parameter updates are manually implemented with NumPy.
 
-Beyond the physical limitations of the resolution, there is a critical domain gap between synthetic training data and real-world human input. Standard datasets (such as the Unifont dataset) provide characters with perfect, 1-pixel-thick static lines. Conversely, when users interact with a graphical interface—drawing characters freehand using a computer mouse or trackpad—the inputs are highly erratic. Human-generated strokes exhibit unpredictable variations in thickness, localized elastic distortions, angular skewing (shear), and arbitrary spatial offsets. A Convolutional Neural Network (CNN) trained exclusively on clean, synthetic fonts often experiences a drastic drop in accuracy when exposed to these noisy, real-world trajectories because it has not learned to generalize against such human factors.
+The low resolution creates substantial ambiguity. Curves, stroke intersections, and gaps may occupy only one or two pixels. Consequently, classes such as 0/O, 1/I/L, 2/Z, 5/S, 9/q, and F/f can become visually similar. The challenge is not only to obtain reasonable aggregate accuracy, but also to understand which classes fail, how position affects prediction, and whether the architecture is appropriately sized for the data.
 
-Additionally, conventionally deployed machine learning models are static, meaning they do not possess an intrinsic mechanism to correct their own misclassifications after deployment. If a model consistently misinterprets a specific idiosyncratic handwriting style, it will continue to fail without further updates. Exploring a dynamic approach, where user corrections are systematically utilized as a feedback mechanism, provides a practical method to incrementally improve model robustness in real-world scenarios.
+Let an input be $x\in\{0,255\}^{16\times16}$ and let the label space contain $K=47$ classes. The model learns
+\begin{equation}
+f_{\theta}:\mathbb{R}^{16\times16}\rightarrow\mathbb{P}(\mathcal{Y}),
+\end{equation}
+where $\theta$ denotes trainable filters, weights, and biases, and $\mathbb{P}(\mathcal{Y})$ is a probability distribution over the 47 labels. The implementation must run on CPU without PyTorch, TensorFlow, pretrained weights, or library-provided neural-network layers.
 
 \section{Objectives}
-This project focuses on implementing and evaluating an adaptive 16x16 OCR system by integrating a Convolutional Neural Network with an Active Learning feedback loop. As a practical application of computer vision and machine learning concepts, the primary objectives are defined as follows:
-\begin{itemize}
-    \item \textbf{Implement a Baseline CNN Architecture:} To construct and train a lightweight Convolutional Neural Network tailored for extracting morphological features (such as loops and stroke intersections) from low-resolution 16x16 binary matrices.
-    \item \textbf{Apply Data Augmentation and Preprocessing:} To mitigate the domain gap between synthetic fonts and human handwriting by utilizing established image processing techniques. This includes applying mathematical transformations such as directional stroke thickening, edge jitter, affine transformations, and elastic deformations. Furthermore, an auto-centering preprocessing algorithm is implemented to normalize spatial offsets in raw user inputs.
-    \item \textbf{Develop an Interactive GUI with a Feedback Loop:} To build a graphical user interface that facilitates real-time character drawing and prediction. A core component of this system is the implementation of a data flywheel mechanism designed to collect user-corrected misclassifications. This collected data is then used to periodically fine-tune the model, allowing the system to gradually adapt to diverse, real-world writing patterns.
+The project has the following objectives:
+\begin{itemize}[leftmargin=2em]
+    \item implement Conv2D, ReLU, MaxPool2D, Flatten, Dense, Softmax, cross-entropy, and backpropagation from scratch;
+    \item train on a class-balanced subset of EMNIST Balanced;
+    \item design a CNN whose spatial dimensions remain valid for a $16\times16$ input;
+    \item reduce overfitting through a smaller classifier, learning-rate decay, best-checkpoint saving, and early stopping;
+    \item evaluate overall and per-class performance;
+    \item compare dataset size, learning rate, and padding;
+    \item quantify sensitivity to spatial displacement and the benefit of centering;
+    \item provide an interactive drawing interface that can collect corrected labels.
 \end{itemize}
 
+% =============================================================================
 \chapter{Theoretical Background}
 \label{sec:theoretical-background}
 
 \section{Problem Formulation}
-The character recognition task on low-resolution grids, augmented by an active learning feedback loop, can be modeled mathematically in two distinct phases: static optimization and dynamic adaptation.
 
 \subsection*{Data Space and Static Optimization}
-
-Let $\mathcal{X}$ denote the input space of $16 \times 16$ binary image matrices, where an individual input is defined as $x \in \{0, 255\}^{16 \times 16}$. Let $\mathcal{Y} = \{1, 2, \dots, K\}$ represent the label space, with $K$ being the total number of character classes. The initial synthetic training dataset is defined as $D_{train} = \{(x_1, y_1), (x_2, y_2), \dots, (x_N, y_N)\}$, where $N$ is the total number of generated samples.
-
-The objective of the Convolutional Neural Network (CNN) is to learn a mapping function $f_\theta: \mathcal{X} \rightarrow \mathbb{P}(\mathcal{Y})$, parameterized by a set of weights $\theta$, where $\mathbb{P}(\mathcal{Y})$ is the predicted probability distribution over the $K$ classes. The optimal parameters $\theta^*$ are obtained by minimizing the objective function over $D_{train}$ using the Categorical Cross-Entropy loss:
-
+The stored input space is $\mathcal{X}=\{0,255\}^{16\times16}$. The label set $\mathcal{Y}$ contains ten digits, 26 uppercase letters, and 11 lowercase letters. Given a training set $D_{\mathrm{train}}=\{(x_i,y_i)\}_{i=1}^{N}$, the objective is
 \begin{equation}
-\theta^* = \arg\min_{\theta} \left[ \frac{1}{N} \sum_{i=1}^{N} \mathcal{L}(f_\theta(x_i), y_i) \right]
+\theta^{*}=\arg\min_{\theta}\frac{1}{N}\sum_{i=1}^{N}
+\mathcal{L}(f_{\theta}(x_i),y_i).
+\end{equation}
+For one-hot target $y_i$ and predicted probability $\hat{y}_i$, categorical cross-entropy is
+\begin{equation}
+\mathcal{L}(\hat{y}_i,y_i)=-\sum_{j=1}^{K}y_{i,j}\log(\hat{y}_{i,j}+10^{-9}).
 \end{equation}
 
-For a single sample $(x_i, y_i)$, the loss function $\mathcal{L}$ is defined as:
+\subsection*{Dynamic Update and Correction Collection}
+The GUI stores a user correction as a pair $(x,y)$ in a separate NPZ file. During a later training run, valid correction samples may be appended only to the training partition. Validation and test data remain unchanged. The current benchmark does not compare performance before and after feedback, so the correction mechanism is treated as a data-collection feature rather than a proven accuracy improvement.
 
+\section{CNN Operations for Low-Resolution Binary Images}
+
+\subsection*{Convolution and Padding}
+For input tensor $X$ and filter $W_f$, the convolution output is
 \begin{equation}
-\mathcal{L}(\hat{y}_i, y_i) = - \sum_{j=1}^{K} \mathbb{1}(y_i = j) \log(\hat{y}_{i,j})
+Z_{i,j,f}=\sum_{u=0}^{k-1}\sum_{v=0}^{k-1}\sum_{c=0}^{C-1}
+X_{i+u,j+v,c}W_{u,v,c,f}+b_f.
 \end{equation}
+The current model uses $3\times3$ filters, stride one, and one-pixel zero padding. Padding preserves the spatial dimensions before pooling, which is particularly important because the input is only $16\times16$.
 
-where $\hat{y}_i = f_\theta(x_i)$ is the output vector from the Softmax activation layer, and $\mathbb{1}(\cdot)$ is the indicator function.
+\subsection*{Activation, Pooling, and Classification}
+The ReLU activation is $\operatorname{ReLU}(z)=\max(0,z)$. A non-overlapping $2\times2$ max-pooling operation then halves width and height. Two pooling layers therefore transform the spatial resolution as $16\rightarrow8\rightarrow4$, leaving a $4\times4$ representation rather than collapsing the image too aggressively.
 
-\subsection*{2. Dynamic Adaptation via Active Learning}
+After flattening, a 64-unit dense layer combines the extracted features. The output layer produces 47 logits, which Softmax converts to probabilities:
+\begin{equation}
+p_j=\frac{\exp(z_j-\max(z))}{\sum_{k=1}^{K}\exp(z_k-\max(z))}.
+\end{equation}
+Subtracting the maximum logit improves numerical stability.
 
-To address the domain shift between synthetic data $\mathcal{P}_{aug}(x, y)$ and real-world human inputs $\mathcal{P}_{real}(x, y)$, the system incorporates a temporal feedback loop. At a given time step $t$, the system collects a set of user-corrected misclassifications, denoted as $D_{feedback}^{(t)} \sim \mathcal{P}_{real}(x, y)$.
+\subsection*{Optimization and Evaluation}
+Combining Softmax and cross-entropy gives the output gradient $p-y_{\mathrm{one-hot}}$. Parameters are updated after each image:
+\begin{equation}
+\theta\leftarrow\theta-\eta\nabla_{\theta}\mathcal{L}.
+\end{equation}
+The effective batch size is one. Accuracy measures overall correctness, while macro-precision, macro-recall, and macro-F1 weight every class equally. A confusion matrix reveals systematic visual ambiguities that aggregate accuracy cannot show.
 
-The training dataset is incrementally updated as $D^{(t+1)} = D^{(t)} \cup D_{feedback}^{(t)}$. The model undergoes a fine-tuning process to update its weights to $\theta_{t+1}^*$, utilizing $D_{feedback}$ as a regularizing force to guide the model toward the true real-world distribution without experiencing catastrophic forgetting.
+Weights use He initialization:
+\begin{equation}
+W\sim\mathcal{N}\left(0,\frac{2}{n_{\mathrm{in}}}\right),
+\end{equation}
+which is suitable for ReLU networks.
 
-
-
-\section{Data Augmentation for Low-Resolution Binary Images}
-Data augmentation is a regularization technique used to artificially expand the size and diversity of the training dataset. In standard computer vision tasks, techniques such as Gaussian blur, color jittering, or global salt-and-pepper noise are widely utilized. However, applying these conventional methods to $16 \times 16$ binary grids is detrimental, as continuous noise easily destroys the discrete topological structure of small characters. 
-
-To effectively simulate human handwriting variations while preserving the structural integrity of the binary characters, a specialized augmentation pipeline is required. This pipeline relies on two fundamental categories of transformations: Geometric (Affine) Transformations and Morphological Operations.
-
-\subsection*{Geometric (Affine) Transformations}
-Affine transformations modify the geometric structure of the image by mapping pixel coordinates to new positions while preserving collinearity (straight lines remain straight) and ratios of distances. 
-
-\begin{itemize}
-    \item \textbf{Translation (Shift):} Freehand drawing often results in characters that are not perfectly centered. Translation mathematically shifts all pixel coordinates by a vector $(d_x, d_y)$. This forces the Convolutional Neural Network to learn spatial invariance, ensuring that the model recognizes a character based on its shape rather than its absolute position on the grid.
-    \item \textbf{Rotation:} To simulate the varying angles and orientations of human handwriting, a 2D rotation matrix is applied to the image coordinates. For low-resolution grids, rotation angles must be tightly constrained; otherwise, the interpolation process during coordinate mapping can cause severe aliasing and stroke fragmentation.
-    \item \textbf{Shear Transformation:} Shear transforms rectangles into parallelograms by displacing each pixel proportionally to its distance from an axis. Mathematically, a horizontal shear displaces the $x$-coordinate based on the $y$-coordinate. This perfectly simulates slanted or italicized handwriting styles without altering the fundamental height of the characters.
-\end{itemize}
-
-\subsection*{Morphological Operations}
-Unlike affine transformations that move the entire object in space, morphological operations alter the intrinsic structure and thickness of the strokes based on set theory and localized pixel neighborhoods.
-
-\begin{itemize}
-    \item \textbf{Directional Thickening:} Standard morphological dilation expands the boundaries of foreground pixels uniformly in all directions. On a severely constrained $16 \times 16$ grid, uniform dilation inevitably causes closely spaced strokes (such as the inner loops of 'e', 'a', or '6') to merge into unrecognizable solid blocks. To simulate the thicker strokes of a computer mouse or a bold stylus, \textit{directional thickening} is employed. This operation calculates the maximum value between the original image and a translated copy of itself in a single Cartesian direction (e.g., purely horizontal or purely vertical). This method safely increases stroke weight by one pixel while strictly preserving the internal topology.
-    \item \textbf{Edge Jitter (Boundary Noise):} Global random noise is an unrealistic representation of digital drawing on a clean canvas. Human drawing inaccuracies typically manifest as micro-tremors, resulting in jagged or uneven stroke boundaries. To mathematically simulate this, morphological dilation and erosion are first utilized to isolate the exact outer and inner contours of the character's strokes. Stochastic binary noise is then applied exclusively to these extracted boundaries. This technique accurately models realistic hand tremors (adding stray pixels to the outer edge or removing pixels from the inner edge) without corrupting the core structure of the character.
-\end{itemize}
-
+% =============================================================================
 \chapter{Methodology and System Implementation}
 \label{sec:methodology}
 
-This chapter describes the practical implementation of the proposed OCR system. It covers direct loading and partitioning of the EMNIST dataset, the custom CNN architecture, the training procedure, and the interactive Graphical User Interface (GUI) used for character prediction and correction collection.
-
-
+This chapter describes direct dataset loading, balanced partitioning, the current Dense-64 CNN, its training controls, and the local drawing interface.
 
 \section{Data Loading and Dataset Partitioning}
-The training program directly loads the prepared \texttt{emnist\_47\_classes\_16x16.npz} file. No resizing, rotation, thresholding, or data augmentation is performed during training. The file contains two NumPy arrays: \texttt{X}, with shape $(47{,}000,16,16)$ and data type \texttt{uint8}, and \texttt{y}, with shape $(47{,}000,)$. Each image is a single-channel binary matrix whose pixels are either 0 for the background or 255 for the foreground stroke.
+The training program directly loads \texttt{emnist\_47\_classes\_16x16.npz}. No resizing, thresholding, rotation, or augmentation is performed by \texttt{train.py}. The file contains \texttt{X} with shape $(47{,}000,16,16)$ and \texttt{y} with shape $(47{,}000,)$. Images are binary \texttt{uint8} matrices with 0 as background and 255 as foreground.
 
-The dataset contains 47 character classes: ten digits (0--9), 26 uppercase letters (A--Z), and 11 lowercase letters (a, b, d, e, f, g, h, n, q, r, and t). Character labels are stored as Unicode code points. Before training, the labels are sorted and encoded as consecutive class indices from 0 to 46 so that they can index the 47-dimensional Softmax output. The original Unicode labels are retained in the saved model to convert predicted indices back to readable characters.
+The 47 classes comprise 0--9, A--Z, and the lowercase classes a, b, d, e, f, g, h, n, q, r, and t. Unicode labels are sorted and encoded as indices 0--46 for the Softmax output.
 
-To limit the computational cost of the from-scratch CPU implementation while preserving class balance, the program selects the same number of images from every class. Given a maximum budget of 10,000 images, the number selected per class is
-
+To keep the from-scratch CPU implementation practical, the program selects an equal number per class under a 10,000-image budget:
 \begin{equation}
-n_{class} = \left\lfloor \frac{10{,}000}{47} \right\rfloor = 212.
+n_{\mathrm{class}}=\left\lfloor\frac{10{,}000}{47}\right\rfloor=212.
 \end{equation}
+The balanced total is therefore 9,964. Each class contributes 170 base training images, 21 validation images, and 21 test images, producing base partitions of 7,990, 987, and 987 images. Optional feedback is appended only after this split.
 
-Consequently, the actual balanced subset contains $212 \times 47 = 9{,}964$ images. The remaining budget of 36 images is intentionally unused because distributing it would make some classes larger than others. Samples within each class are shuffled using a fixed random seed before selection.
-
-The balanced subset is divided independently within every class using an 80\%/10\%/10\% stratified split. After rounding, each class contributes 170 training images, 21 validation images, and 21 test images. The resulting base partitions therefore contain 7,990 training images, 987 validation images, and 987 test images. This class-wise partitioning ensures that all three subsets contain every label in equal proportions. Optional user-correction samples are appended only to the training partition after this split, so they cannot leak into the validation or test results.
-
-The only numerical transformation applied before convolution is input normalization inside the CNN forward pass. As described in the following subsection, each pixel is mapped from $[0,255]$ to $[-0.5,0.5]$. This operation changes the numerical scale supplied to the network but does not modify the stored dataset.
+\reportfigure{results/baseline/evaluation/class_distribution.png}
+{Balanced class distribution in the base training, validation, and test partitions.}
+{fig:class-distribution}
 
 \section{Custom CNN Architecture for 16x16 Inputs}
-Given the severely constrained spatial dimensions of the input data ($16 \times 16 \times 1$), deploying a deep, standard CNN architecture (such as ResNet or VGG) is impractical. Such deep networks would rapidly reduce the spatial dimensions to zero through successive pooling layers and would heavily overfit the small-scale features of binary characters. Therefore, a custom, lightweight CNN architecture, encapsulated in the \texttt{StandardCNN} class, was designed from scratch to optimize feature extraction while maintaining computational efficiency.
+The architecture is deliberately shallow. Two convolutional blocks are sufficient to build local and compound stroke features, while two pooling operations leave a $4\times4$ grid. Reducing the dense hidden layer from 128 to 64 lowers the parameter count from 76,527 to 40,687, a reduction of approximately 46.8\%, without changing convolutional feature extraction.
 
 \subsection*{Input Normalization}
-Before propagating through the network, the raw $16 \times 16$ input matrix undergoes a mandatory normalization step. The pixel intensities are linearly scaled from their original grayscale range of $[0, 255]$ to a zero-centered range of $[-0.5, 0.5]$ using the linear transformation \texttt{(image / 255.0) - 0.5}. 
-
-This zero-centering process is mathematically critical for the stability and efficiency of the gradient descent algorithm. If the input values were strictly positive (e.g., scaled only to $[0, 1]$ or left as $[0, 255]$), the local gradients of the weights during backpropagation, calculated as $\frac{\partial L}{\partial W_i} = \frac{\partial L}{\partial Z} X_i$, would all share the exact same sign as the upstream gradient $\frac{\partial L}{\partial Z}$. Consequently, all weights connected to a specific neuron would be forced to either increase or decrease simultaneously during a single update step. This restriction severely limits the optimizer's freedom of movement, leading to highly inefficient, zigzagging optimization trajectories across the loss landscape.
-
-By shifting the input domain to $[-0.5, 0.5]$, the input vector contains both positive (foreground strokes) and negative (background) values. This completely decouples the weight updates, allowing the optimizer to adjust individual weights in opposite directions simultaneously, thereby drastically accelerating the convergence rate. Furthermore, bounding the input variance near zero prevents the activation values from exploding during successive matrix multiplications, effectively mitigating the risk of numerical overflow (e.g., \texttt{NaN} outputs) during the Softmax exponentiation in the final layer.
+Pixels are mapped from $[0,255]$ to $[-0.5,0.5]$ inside the forward pass:
+\begin{equation}
+x'=\frac{x}{255}-0.5.
+\end{equation}
+This numerical scaling is not dataset preprocessing; it is part of model computation.
 
 \subsection*{First Convolutional Block}
-The first block focuses on extracting low-level geometric primitives, such as horizontal, vertical, and diagonal strokes.
-\begin{itemize}
-    \item \textbf{Conv2D Layer:} The network applies 16 filters of size $3 \times 3$ over the single-channel input. A $3 \times 3$ kernel serves as the smallest possible window to capture structural relationships like corners or intersections, while 16 filters provide adequate capacity to learn primary edge variations without overwhelming the model with redundant parameters. This convolution operates without zero-padding (valid padding) to avoid introducing artificial background zeros at the image borders, subsequently reducing the spatial dimensions from $16 \times 16$ to $14 \times 14$.
-    \item \textbf{ReLU Activation:} A Rectified Linear Unit (ReLU) is applied to introduce non-linearity by capping negative values to zero.
-    \item \textbf{MaxPool2D Layer:} A non-overlapping $2 \times 2$ Max Pooling operation is applied to downsample the feature maps from $14 \times 14$ to $7 \times 7$. This operation isolates the most prominent structural features, provides local translation invariance, and drastically reduces the computational load for the subsequent layers.
-\end{itemize}
+Conv1 applies 16 filters of size $3\times3$ with padding one, producing $16\times16\times16$. ReLU introduces nonlinearity and $2\times2$ max pooling reduces the tensor to $8\times8\times16$.
 
 \subsection*{Second Convolutional Block}
-The second block is designed to combine the low-level strokes extracted by the first block into more complex, character-defining structures, such as closed loops or crossing intersections.
-\begin{itemize}
-    \item \textbf{Conv2D Layer:} This layer takes the 16 channels from the previous block and applies 32 filters of size $3 \times 3$. Increasing the depth to 32 filters allows the network to represent higher-level abstractions within the much smaller spatial dimension. Using valid convolution, the spatial dimensions are further reduced from $7 \times 7$ to $5 \times 5$.
-    \item \textbf{ReLU Activation:} A second ReLU activation is applied to maintain non-linearity.
-    \item \textbf{MaxPool2D Layer:} Another $2 \times 2$ pooling layer is utilized to condense the feature maps from $5 \times 5$ down to a highly compressed $2 \times 2$ spatial grid.
-\end{itemize}
+Conv2 applies 32 filters of size $3\times3$ with padding one, producing $8\times8\times32$. After ReLU and pooling, the output is $4\times4\times32$.
 
-\subsection*{Fully Connected (Dense) Classifier}
-The final phase of the architecture translates the 3D feature maps into a 1D vector to perform global reasoning and classification.
-\begin{itemize}
-    \item \textbf{Flatten Layer:} The $2 \times 2 \times 32$ feature maps are flattened into a single 1D vector consisting of exactly 128 elements.
-    \item \textbf{First Dense Layer:} A fully connected layer maps the 128 input nodes to 128 hidden nodes, followed by a ReLU activation. This layer acts as a non-linear combination unit, aggregating the spatial features across the entire $2 \times 2$ grid to understand the global topology of the character.
-    \item \textbf{Output Dense Layer:} The final fully connected layer maps the 128 hidden nodes down to the exact number of character classes defined in the dataset.
-    \item \textbf{Softmax Activation:} The output logits are passed through a Softmax function, converting them into a normalized probability distribution where the sum of all class probabilities equals 1. To ensure numerical stability during the backward pass and prevent overflow, the custom Softmax implementation safely subtracts the maximum logit before exponentiation.
-\end{itemize}
+\subsection*{Fully Connected Classifier}
+The pooled tensor is flattened into 512 values. Dense1 maps $512\rightarrow64$, followed by ReLU. Dense2 maps $64\rightarrow47$, followed by Softmax.
+
+\begin{table}[H]
+\centering
+\caption{Current CNN architecture for $16\times16$ inputs.}
+\label{tab:architecture}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllr}
+\toprule
+Layer & Input & Configuration & Output & Parameters \\
+\midrule
+Input & $16\times16$ & Normalize & $16\times16\times1$ & 0 \\
+Conv1 & $16\times16\times1$ & 16 filters, $3\times3$, pad 1 & $16\times16\times16$ & 160 \\
+ReLU1 + Pool1 & $16\times16\times16$ & ReLU, pool $2\times2$ & $8\times8\times16$ & 0 \\
+Conv2 & $8\times8\times16$ & 32 filters, $3\times3$, pad 1 & $8\times8\times32$ & 4,640 \\
+ReLU2 + Pool2 & $8\times8\times32$ & ReLU, pool $2\times2$ & $4\times4\times32$ & 0 \\
+Flatten & $4\times4\times32$ & Flatten & 512 & 0 \\
+Dense1 & 512 & 64 units + ReLU & 64 & 32,832 \\
+Dense2 & 64 & 47 units & 47 & 3,055 \\
+Softmax & 47 & Probability normalization & 47 & 0 \\
+\midrule
+\multicolumn{4}{r}{\textbf{Total}} & \textbf{40,687} \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 \subsection*{Weight Initialization and Loss Calculation}
-\begin{itemize}
-    \item \textbf{He Initialization:} To mitigate the vanishing gradient problem, the weights in both Conv2D and Dense layers are explicitly initialized using a scaled Gaussian distribution multiplied by $\sqrt{2.0 / \text{input\_size}}$. This conforms to the standard He initialization scheme, which is mathematically optimized for networks utilizing ReLU activations.
-    \item \textbf{Categorical Cross-Entropy Loss:} During the training step, the model evaluates its predictions using the cross-entropy loss function. A small epsilon value of $1 \times 10^{-9}$ is systematically added to the predicted probability before taking the logarithm. This addition prevents critical mathematical errors, such as calculating the log of zero, particularly when the network is highly unconfident in its early epochs.
-\end{itemize}
+Convolution and dense weights use He initialization; biases start at zero. Cross-entropy adds $10^{-9}$ before the logarithm to avoid $\log(0)$.
 
+\subsection*{Training Controls}
+The initial learning rate is 0.008. After each epoch, validation loss is compared with the best value observed so far. If it fails to improve by at least $10^{-4}$ for one epoch, the learning rate for the next epoch is multiplied by 0.5, down to a minimum of 0.001. This Reduce-on-Plateau policy adapts to the actual optimization trajectory instead of assuming that every run should decay at the same fixed epoch. Whenever validation loss improves, the model is saved as the new best checkpoint and the plateau counter is reset. Early stopping uses patience four and cannot trigger before epoch 7. After training, the best checkpoint rather than the final in-memory state is loaded for test evaluation.
+
+% =============================================================================
 \chapter{Experiments and Evaluation}
 
-This chapter presents the complete experimental analysis conducted in this study,
-including exploratory data analysis (EDA), churn prediction modeling, uplift modeling,
-and financial simulation. The objective is to understand customer churn behavior,
-build accurate predictive models, and assess the financial viability of targeted
-retention strategies.
+% TODO_NEW_BENCHMARK: This entire chapter currently uses the old Dense-128 export.
+\noindent\fbox{\parbox{0.94\linewidth}{
+\textbf{Provisional benchmark notice.} The figures and numerical values in this chapter were generated by the previous Dense-128 model with 76,527 parameters and a fixed learning rate. They are retained temporarily to complete the report layout. After running the current Dense-64 model, replace every item marked \texttt{TODO\_NEW\_BENCHMARK} using the new files under \texttt{results/}.
+}}
 
-\section{Exploratory Data Analysis}
+\section{Dataset and Baseline Analysis}
+The exported class-distribution plot confirms equal support for all 47 labels. The old baseline used 9,964 selected EMNIST images plus eight feedback samples in the training partition. Validation and test remained balanced at 21 samples per class.
 
-We begin with exploratory data analysis to examine how customer attributes relate
-to churn behavior. The following figures visualize key categorical and numerical
-features from the dataset.
+% TODO_NEW_BENCHMARK: Replace training-curve discussion and image after rerun.
+The provisional learning curves show training accuracy increasing from 67.07\% to 91.76\%, while validation accuracy peaks at 76.29\% at epoch 7 and ends at 74.06\%. Validation loss increases after its epoch-7 minimum, indicating overfitting in the old Dense-128 model.
 
-\subsection*{Contract Type and Churn}
+\reportfigure{results/baseline/evaluation/training_curves.png}
+{Provisional training and validation curves. Replace with the Dense-64 export.}
+{fig:training-curves}
 
-Figure~\ref{fig:17_1} shows the distribution of customer contract types,
-while Figure~\ref{fig:17_2} presents the churn rate for each contract category.
-Customers on month-to-month contracts churn at a much higher rate compared
-to those on one-year or two-year contracts, indicating that longer contractual
-commitment plays a significant role in customer retention.
+% TODO_NEW_BENCHMARK: Replace all values in this table.
+\begin{table}[H]
+\centering
+\caption{Provisional Dense-128 baseline results.}
+\label{tab:baseline-results}
+\begin{tabular}{lr}
+\toprule
+Metric & Provisional result \\
+\midrule
+Test loss & 1.0389 \\
+Test accuracy & 72.54\% \\
+Macro-precision & 0.7425 \\
+Macro-recall & 0.7254 \\
+Macro-F1 & 0.7230 \\
+Mean confidence & 85.91\% \\
+Mean inference time & 35.61 ms/image \\
+Parameters & 76,527 \\
+Model file size & 614,746 bytes \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide17_1.png}
-        \caption{Distribution of customer contract types.}
-        \label{fig:17_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide17_2.png}
-        \caption{Churn rate across different contract types.}
-        \label{fig:17_2}
-    \end{minipage}
-\end{figure}
+\section{Controlled Model Experiments}
 
-\subsection*{Payment Method}
+\subsection*{Effect of Dataset Size}
+% TODO_NEW_BENCHMARK: Replace table and figure with Dense-64 experiment outputs.
+The provisional experiment shows the largest gain when increasing from 2,350 to 4,700 images. Performance then improves more gradually, while runtime grows approximately linearly.
 
-Figures~\ref{fig:18_1} and \ref{fig:18_2} illustrate the distribution of payment
-methods and corresponding churn rates. Customers using electronic checks churn
-at the highest rate, while automated payment users show better retention. This
-suggests that payment convenience and automation contribute to customer stickiness.
+\begin{table}[H]
+\centering
+\caption{Provisional effect of dataset size from the Dense-128 benchmark.}
+\label{tab:sample-size}
+\begin{tabular}{rrrrr}
+\toprule
+Images & Accuracy & Macro-F1 & Test loss & Runtime (s) \\
+\midrule
+2,350 & 65.53\% & 0.6460 & 1.5505 & 1,802.38 \\
+4,700 & 72.77\% & 0.7190 & 1.2107 & 3,616.39 \\
+7,050 & 73.19\% & 0.7334 & 1.0472 & 5,399.65 \\
+9,964 & 73.66\% & 0.7337 & 1.0794 & 7,618.53 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide18_1.png}
-        \caption{Distribution of customer payment methods.}
-        \label{fig:18_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide18_2.png}
-        \caption{Churn rate by payment method.}
-        \label{fig:18_2}
-    \end{minipage}
-\end{figure}
+\reportfigure{results/experiments/sample_size_comparison.png}
+{Provisional dataset-size comparison. Replace with the Dense-64 export.}
+{fig:sample-size}
 
-\subsection*{Dependents and Partner Status}
+\subsection*{Effect of Learning Rate}
+% TODO_NEW_BENCHMARK: Replace table and figure. New runs use each value as the initial LR and then decay it.
+\begin{table}[H]
+\centering
+\caption{Provisional fixed-learning-rate comparison from the Dense-128 benchmark.}
+\label{tab:learning-rate}
+\begin{tabular}{rrrr}
+\toprule
+Learning rate & Accuracy & Macro-F1 & Test loss \\
+\midrule
+0.002 & 72.55\% & 0.7229 & 0.9480 \\
+0.004 & 72.55\% & 0.7196 & 1.0340 \\
+0.008 & 72.77\% & 0.7190 & 1.2107 \\
+0.012 & 67.45\% & 0.6656 & 1.4118 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Figures~\ref{fig:19_1} and \ref{fig:19_2} compare churn among customers with/without
-dependents and partners. Customers without dependents or without a partner exhibit
-higher churn, suggesting that single or less-stable households are more prone to
-switching providers.
+\reportfigure{results/experiments/learning_rate_comparison.png}
+{Provisional learning-rate comparison. Replace with the Dense-64 export.}
+{fig:learning-rate}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide19_1.png}
-        \caption{Churn comparison between customers with and without dependents.}
-        \label{fig:19_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide19_2.png}
-        \caption{Churn comparison between customers with and without a partner.}
-        \label{fig:19_2}
-    \end{minipage}
-\end{figure}
+\subsection*{Effect of Padding}
+% TODO_NEW_BENCHMARK: Replace table and figure. Parameter counts will change with Dense-64.
+The provisional benchmark indicates that padding one improves accuracy at the cost of parameters and runtime. This supports retaining padding one for the current architecture because preserving border information is valuable at $16\times16$.
 
-\subsection*{Senior Citizen and Online Security}
+\begin{table}[H]
+\centering
+\caption{Provisional padding comparison from the Dense-128 benchmark.}
+\label{tab:padding}
+\begin{tabular}{rrrrr}
+\toprule
+Padding & Accuracy & Macro-F1 & Parameters & Inference \\
+ & & & & (ms/image) \\
+\midrule
+0 & 68.94\% & 0.6858 & 27,375 & 23.28 \\
+1 & 72.77\% & 0.7190 & 76,527 & 35.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-Figure~\ref{fig:20_1} shows churn among senior citizens. Although this group is small,
-their churn proportion is notably high. Figure~\ref{fig:20_2} reveals that customers
-without online security services churn significantly more, highlighting the importance
-of value-added services.
+\reportfigure{results/experiments/padding_comparison.png}
+{Provisional padding comparison. Replace with the Dense-64 export.}
+{fig:padding}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide20_1.png}
-        \caption{Distribution of senior citizen customers and churn outcome.}
-        \label{fig:20_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide20_2.png}
-        \caption{Churn distribution by online security subscription status.}
-        \label{fig:20_2}
-    \end{minipage}
-\end{figure}
+\section{Robustness and Error Analysis}
 
-\subsection*{Billing Method, Technical Support, and Phone Service}
+\subsection*{Confusion Matrix and Per-Class Performance}
+% TODO_NEW_BENCHMARK: Replace class-level statements after rerun.
+The old benchmark's dominant confusions were 0/O, f/F, I/1, L/1, 2/Z, 5/S, and 9/q. These pairs are plausible at very low resolution because they share coarse stroke topology. The weakest provisional F1 scores belonged to g, f, 0, L, and q, while M, e, r, 7, and 3 were among the strongest.
 
-Figure~\ref{fig:21_1} shows churn under paperless vs non-paperless billing,
-where paperless billing correlates with higher churn. Figure~\ref{fig:21_2}
-shows churn among customers without phone service, while Figure~\ref{fig:21_3}
-illustrates churn differences based on technical support availability.
+\reportfigure[0.9\linewidth]{results/baseline/evaluation/confusion_matrix_normalized.png}
+{Provisional normalized confusion matrix. Replace with the Dense-64 export.}
+{fig:confusion}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide21_1.png}
-        \caption{Churn rate across paperless and non-paperless billing customers.}
-        \label{fig:21_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide21_2.png}
-        \caption{Churn distribution among customers without phone service.}
-        \label{fig:21_2}
-    \end{minipage}
-\end{figure}
+\reportfigure{results/baseline/evaluation/f1_by_class.png}
+{Provisional F1 score by class. Replace with the Dense-64 export.}
+{fig:f1-by-class}
 
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide21_3.png}
-    \caption{Churn distribution based on technical support availability.}
-    \label{fig:21_3}
-\end{figure}
+\reportfigure[0.9\linewidth]{results/baseline/evaluation/misclassified_examples.png}
+{Provisional misclassified examples with true label, prediction, and confidence.}
+{fig:misclassified}
 
-\subsection*{Monthly Charges and Tenure}
+\subsection*{Spatial Robustness}
+% TODO_NEW_BENCHMARK: Replace robustness values and image after rerun.
+In the previous model, random shifts of up to two pixels reduced accuracy from 72.54\% to 44.07\%. Cropping and centering restored it to 72.75\%. This result motivates retaining the same centering operation in the current GUI even before the Dense-64 benchmark is available.
 
-Figure~\ref{fig:img1} displays the relationship between monthly charges and churn,
-Figure~\ref{fig:img2} shows the distribution of monthly charges, and Figure~\ref{fig:img3}
-illustrates churn across different tenure levels. Higher monthly charges and short tenure
-correspond to significantly higher churn.
+\begin{table}[H]
+\centering
+\caption{Provisional spatial-robustness results from the Dense-128 model.}
+\label{tab:robustness}
+\begin{tabular}{lrr}
+\toprule
+Condition & Accuracy & Mean loss \\
+\midrule
+Original & 72.54\% & 1.0389 \\
+Random shift $[-2,2]$ & 44.07\% & 3.1013 \\
+Shifted then centered & 72.75\% & 1.0837 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.32\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide22_1.png}
-        \caption{Relationship between monthly charges and churn.}
-        \label{fig:img1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.32\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide22_2.png}
-        \caption{Distribution of monthly charges.}
-        \label{fig:img2}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.32\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide22_3.png}
-        \caption{Churn distribution across different tenure levels.}
-        \label{fig:img3}
-    \end{minipage}
-\end{figure}
+\reportfigure{results/baseline/evaluation/shift_robustness.png}
+{Provisional robustness to random shifts and subsequent centering.}
+{fig:shift-robustness}
 
-\section{Customer Subscription Churn Modeling}
+\section{Interactive Recognition System}
+The GUI loads class labels and architecture metadata from the saved model. A user draws with the left mouse button, erases with the right button, and requests a prediction. The image is centered before inference. The interface displays the predicted character and confidence, asks whether the result is correct, and stores a case-sensitive correction when needed.
 
-\subsection*{Model Interpretation}
+The model file can be loaded directly or extracted automatically from \texttt{cnn\_evaluation\_results.zip}. This allows the interface to run locally without the EMNIST dataset after training has completed.
 
-Figure~\ref{fig:23_1} ranks the importance of features used in the baseline churn model.
-Monthly charges and fiber-optic service appear as strong churn predictors, highlighting
-the impact of cost and service type.
+% TODO_NEW_BENCHMARK: Replace feature-map image after rerun.
+\reportfigure{results/baseline/evaluation/feature_maps.png}
+{Provisional representative feature maps from the previous benchmark.}
+{fig:feature-maps}
 
-Figure~\ref{fig:23_2} presents the confusion matrix. The model identifies non-churners
-slightly better than churners, though overall performance is balanced.
-
-\begin{figure}[H]
-    \centering
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide23_1.png}
-        \caption{Feature importance ranking from the churn classification model.}
-        \label{fig:23_1}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.48\linewidth}
-        \centering
-        %\includegraphics[width=\linewidth]{images/slide23_2.png}
-        \caption{Confusion matrix of the baseline churn model.}
-        \label{fig:23_2}
-    \end{minipage}
-\end{figure}
-
-\subsection*{Model Comparison}
-
-Figure~\ref{fig:24} compares the ROC curves of logistic regression, random forest,
-and decision tree models. Logistic regression achieves the best AUC (0.83), followed
-by random forest (0.81), while the decision tree underperforms with an AUC of 0.67.
-
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=0.7\linewidth]{images/slide24.png}
-    \caption{ROC curves for Logistic Regression, Random Forest, and Decision Tree models.}
-    \label{fig:24}
-\end{figure}
-
-\section{Uplift Modeling and Financial Simulation}
-
-\subsection*{Uplift Model Evaluation}
-
-The uplift model was evaluated using two binary classifiers: a control-group model
-(Model 0) and a treatment-group model (Model 1). The control model achieved an
-AUC of 0.820, while the treatment model reached an AUC of 0.834, indicating strong
-discriminative ability within each subgroup and reliable prediction of churn likelihood.
-
-Regarding uplift-specific metrics, the model obtained a Qini coefficient of 4145.49,
-which confirms that it successfully differentiates between customers who are more
-likely to respond positively to retention offers versus those who are not. The Area
-Under the Uplift Curve (AUUC) was slightly negative (–5841.25), suggesting minor
-inconsistencies in uplift ranking or calibration. This limitation is likely caused by the
-randomly generated treatment labels in the dataset rather than true causal responses.
-
-Overall, despite the small uplift magnitude, the model is able to identify customer
-subgroups with differing incremental responses to promotional offers. Additional
-improvements are expected if real treatment labels become available or if causal
-models with better uplift calibration are introduced.
-
-\subsection*{Financial Simulation}
-
-Figure~\ref{fig:26} reports the top 5 targetable customers ranked by their expected
-churn reduction. For each customer, the table compares the predicted churn
-probability if an offer is provided versus if no offer is provided, and computes the
-expected incremental impact.
-
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide26.png}
-    \caption{Top 5 targetable customers ranked by expected churn reduction.}
-    \label{fig:26}
-\end{figure}
-
-The financial simulation indicates that high-uplift customers show meaningful churn
-reduction potential (ranging from 0.45 to 0.53). However, under the assumed customer
-lifetime value (CLV) of \$1200 and retention-offer cost of \$100, the average net
-financial impact remains negative. This suggests that either improved uplift calibration
-or a redesigned retention strategy is needed to achieve positive net savings.
-
-\section{Management Dashboard}
-
-%  present the management dashboard
-% developed to visualize churn risk, segment customers, and monitor operational KPIs.
-
-To support strategic decision-making, an interactive Management Dashboard was developed using Streamlit.
-The dashboard (Figures~\ref{fig:27_1}, \ref{fig:27_2}, and \ref{fig:27_3}) allows business analysts and retention managers to visualize model outputs, simulate offer-cost scenarios, and identify optimal targeting strategies based on uplift modeling results. It is designed for simplicity, interactivity, and real-time analysis using either demo data or uploaded model predictions.
-
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide27_1.png}
-    \caption{Dashboard interface showing churn scores and customer insights.}
-    \label{fig:27_1}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide27_3.png}
-    \caption{Dashboard visualizing a cumulative net savings curve.}
-    \label{fig:27_3}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide27_2.png}
-    \caption{Dashboard panel presenting Top 10 Targetable Customers Table.}
-    \label{fig:27_2}
-\end{figure}
-
-At its core, the dashboard accepts a dataset containing predicted churn probabilities for both treated and untreated customers \texttt{p\_churn\_if\_offer} and \texttt{p\_churn\_if\_nooffer}, along with optional columns such as \texttt{expected\_churn\_reduction} and \text{CLV}. Once loaded, the application automatically computes uplift scores (the expected reduction in churn if an offer is made) and derives key financial metrics such as retained CLV and net savings. Users can modify key parameters — including the \textit{offer cost per customer} and \textit{average customer lifetime value (CLV)} — through a sidebar configuration panel to perform what-if simulations and immediately visualize how these changes affect profitability.
-
-The main interface presents a series of dynamic Key Performance Indicators (KPIs) summarizing the dataset: total number of records, average churn probability, mean uplift, and the optimal number of customers to target for maximum profit. Complementing these metrics are several interactive visualizations powered by Plotly: a histogram of churn probabilities to reveal baseline risk distribution, an uplift distribution chart to show how strongly different customers respond to offers, and a cumulative net savings curve illustrating how total profits change as more customers are targeted. The dashboard automatically identifies and annotates the optimal cutoff point — where cumulative net savings peak — allowing users to balance campaign scale and efficiency.
-
-A dedicated \textit{What-If Offer-Cost Simulator} provides immediate feedback on how different offer costs and CLV assumptions impact campaign ROI. Users can switch between \textit{optimal} and \textit{manual targeting} modes: in optimal mode, the dashboard selects the cutoff that maximizes total net savings, whereas manual mode allows users to specify a target percentage of customers to simulate alternative strategies. The interface also displays a \textit{Top 10 Targetable Customers Table}, listing customers with the highest expected churn reduction and corresponding retained CLV and net savings, offering transparency into which individuals contribute most to the predicted gains.
-
-Overall, this dashboard transforms the analytical results of the uplift model into an actionable, interactive management tool. It enables data-driven decision-making by integrating predictive modeling, financial evaluation, and visualization in a single interface — empowering managers to fine-tune offer strategies, quantify expected returns, and optimize marketing budgets for customer retention.
-
-
-
-\clearpage
-The evaluation metrics in the previous chapter (e.g.\ ROC--AUC for churn
-prediction and AUUC for uplift) show that our models perform well
-statistically. However, a manager or call center agent does not work with
-ROC curves; they need clear guidance during a customer interaction. In this
-section, we outline a short ``next best action'' scenario that turns the
-models into operational decisions (see Figure~\ref{fig:slide29}).
-
-When a customer calls support, the system executes the following steps:
-\begin{enumerate}
-    \item \textbf{Churn scoring}: the Baseline Churn Model runs in real time
-          and outputs an individual churn probability.
-    \item \textbf{Risk alert}: if this probability is above a threshold, the
-          agent interface highlights a \emph{high churn risk} warning.
-    \item \textbf{Uplift scoring}: the Uplift Model estimates the expected
-          reduction in churn if a retention offer is applied and classifies
-          the customer as \emph{persuadable}, \emph{loyal}, or \emph{lost cause}.
-    \item \textbf{Next best action}: based on the uplift score and our
-          financial assumptions, the system recommends a specific offer (or
-          ``no offer'') that maximizes expected net savings.
-\end{enumerate}
-
-\noindent
-\textbf{Example.}  
-Customer A (month-to-month contract, 5 months tenure) calls to complain about
-their bill. The churn model returns a 90\% churn probability, and the screen
-shows ``\emph{Very High Risk}''. The uplift model classifies the customer as
-\emph{persuadable}, so the dashboard recommends:
-
-\begin{quote}
-    \emph{``High-risk customer. Offer \textbf{Retention Silver}: 15\% discount
-    for 6 months if the customer switches to a 1-year contract.''}
-\end{quote}
-
-Under our financial assumptions, this interaction costs \$100 (incentive) and
-retains a customer worth \$1\,200 in CLV, yielding an expected net gain of
-\$1\,100 from a single, targeted decision. This illustrates how the proposed
-framework can translate good model metrics into concrete, profitable actions
-at the call center.
-
-\begin{figure}[t]
-    \centering
-    %\includegraphics[width=\linewidth]{images/slide29.png}
-    \caption{Customer retention process -- From model to action.}
-    \label{fig:slide29}
-\end{figure}
-
+% =============================================================================
 \chapter{Conclusions}
-\label{sec:conclusion}
-
-This report set out to address a central question for subscription-based telecommunications businesses: how to predict which customers are likely to churn, and how to design cost–effective retention strategies that focus resources on the right individuals. In Chapter~\ref{sec:problem-formulation}, we formulated churn management as a structured decision problem involving three layers: estimating individual churn risk, estimating the impact of a retention offer (uplift), and translating these estimates into financial outcomes. Chapter~\ref{sec:methodology} then presented the modeling framework for churn prediction, uplift estimation using a two-model approach, and a simple financial simulation linking uplift to net savings under explicit assumptions about customer lifetime value and incentive costs.
 
 \subsection*{Key Findings}
+The current architecture is structurally appropriate for $16\times16$ inputs. Two padded convolutional blocks preserve edge information, while two pooling operations leave a $4\times4$ feature grid. Reducing the dense hidden layer to 64 lowers the total parameter count to 40,687 and directly addresses the large train-validation gap observed in the previous Dense-128 benchmark.
 
-A first key conclusion is that \textbf{churn is predictable rather than random}. The customer-level data show systematic relationships between churn behavior and a small set of intuitive drivers. In particular, contract type, tenure, and payment method play a central role:
-\begin{itemize}
-    \item customers on \emph{month-to-month} contracts exhibit substantially higher churn risk than those on one–year or two–year contracts;
-    \item customers with \emph{short tenure} (newer customers) are more likely to leave than long–standing subscribers;
-    \item customers paying by \emph{electronic check} are more prone to churn than those using more stable payment methods such as credit card or bank transfer.
-\end{itemize}
-These patterns confirm that churn is driven by identifiable contractual and behavioral factors, and that a reasonably simple supervised model can capture a meaningful share of the variation in churn risk at the individual level.
+Best-checkpoint saving prevents a worse final epoch from replacing a stronger validation state. Early stopping limits unnecessary updates, and Reduce-on-Plateau provides smaller late-stage corrections as soon as validation loss stagnates. These changes are expected to improve generalization, but their effect must be confirmed by the new benchmark rather than assumed.
 
-At the same time, the analysis highlights that \textbf{prediction alone is not sufficient} for sound business decisions. A high churn probability tells us who is likely to leave under current conditions, but it does not answer the more operational question: \emph{what should we do about it?} If retention offers are directed mechanically at all ``high–risk'' customers, the company may end up:
-\begin{itemize}
-    \item subsidizing \emph{loyals} who would have stayed anyway even without an offer; and
-    \item wasting incentives on \emph{lost causes} who will churn regardless of any discount or promotion.
-\end{itemize}
-Both situations erode profitability, even if the churn model is statistically accurate.
-
-This motivates the third key conclusion: \textbf{uplift is the right lens for retention strategy}. By explicitly modeling the difference between churn probabilities with and without an offer, the uplift framework focuses attention on the \emph{persuadables}—customers whose decision is actually changed by the incentive. Only in this segment does a retention offer create genuine incremental value. When uplift scores are combined with simple financial assumptions (customer lifetime value and offer cost), it becomes possible to distinguish between:
-\begin{itemize}
-    \item customers for whom the expected retained CLV exceeds the cost of the offer (positive expected net savings); and
-    \item customers for whom the offer is not economically justified.
-\end{itemize}
-Conceptually, this closes the loop from prediction to decision: not only identifying who is at risk, but also who should be targeted to achieve positive return on investment.
-
-\subsection*{Managerial Implications}
-
-From a managerial perspective, the main implication is that churn and retention should be treated as an integrated, data–driven process rather than as separate reporting and campaign activities. A practical implementation of the proposed framework would provide front–line teams with:
-\begin{itemize}
-    \item a \emph{churn scorecard} that ranks customers by risk;
-    \item an \emph{uplift score} or ``next best action'' signal that indicates where offers are most likely to change behavior; and
-    \item a simple view of expected financial impact (retained CLV, incentive cost, and net savings) for different targeting thresholds.
-\end{itemize}
-Such tools can support more disciplined decisions about whom to contact, what kind of offer to extend, and how to balance campaign volume against budget constraints.
+\subsection*{Practical Implications}
+The provisional results identify two robust design choices that remain relevant: padding one preserves useful border features, and explicit centering is essential for mouse-drawn input. The saved-model metadata and ZIP-loading workflow also make local deployment straightforward. The user-correction mechanism provides a practical route for collecting additional handwriting, although no improvement claim is made without an independent evaluation.
 
 \subsection*{Limitations and Future Work}
+% TODO_NEW_BENCHMARK: Reassess these limitations after Dense-64 results are available.
+The present report temporarily combines the current Dense-64 methodology with Dense-128 benchmark artifacts. This is acceptable only as a draft and must be resolved before final submission. The next run should replace every item marked \texttt{TODO\_NEW\_BENCHMARK}.
 
-The current report uses a simulated treatment assignment and a stylized financial model. As a result, the uplift estimates and net savings are \emph{scenario–based} rather than measured causal effects. This leads directly to the most important next steps:
-\begin{itemize}
-    \item \textbf{Run an A/B test pilot.} A controlled experiment on a small, representative customer cohort is essential to validate the uplift model in practice. By randomly assigning real offers to a treatment group and comparing outcomes to a control group, the telecom operator can measure true incremental retention and refine the model accordingly.
-    \item \textbf{Integrate and automate in operational systems.} To create ongoing value, the churn scorecard and uplift–based ``next best action'' should be embedded into the call center’s CRM or customer management platform. This would allow agents to see risk and recommended actions in real time and to record actual responses, feeding back new data to continuously improve the models.
-\end{itemize}
+Additional limitations include a single random seed, only 21 test images per class, batch-size-one training, slow Python convolution loops, no training-time augmentation, and no independent user-level holdout. Future work may add repeated-seed evaluation, manual mini-batch vectorization, L2 regularization, lightweight training-only augmentation, probability calibration, and a controlled feedback study.
 
-Beyond these immediate next steps, future work could explore richer offer strategies (e.g., multiple offer types with different costs and effects), more granular CLV estimation, and alternative uplift modeling techniques. However, even in its current form, the framework presented in this report provides a coherent path from raw customer data to actionable, financially grounded retention decisions. It demonstrates that, when combined with uplift modeling and basic economics, churn prediction can move from descriptive reporting to a practical tool for managing subscription relationships more profitably.
+% =============================================================================
+\appendix
+\chapter{Reproducibility}
+The current model and evaluation suite are executed with:
+\begin{lstlisting}
+python train.py
+python run_all_evaluations.py
+\end{lstlisting}
 
+After the new benchmark completes, search this source for:
+\begin{lstlisting}
+TODO_NEW_BENCHMARK
+\end{lstlisting}
+and replace each provisional paragraph or table using the new CSV/JSON outputs.
 
+\begin{thebibliography}{9}
+\addcontentsline{toc}{chapter}{References}
+\bibitem{cohen2017emnist}
+G. Cohen, S. Afshar, J. Tapson, and A. van Schaik,
+``EMNIST: Extending MNIST to handwritten letters,''
+\textit{2017 International Joint Conference on Neural Networks}, pp. 2921--2926, 2017.
 
+\bibitem{lecun1998gradient}
+Y. LeCun, L. Bottou, Y. Bengio, and P. Haffner,
+``Gradient-based learning applied to document recognition,''
+\textit{Proceedings of the IEEE}, vol. 86, no. 11, pp. 2278--2324, 1998.
 
-
-
-\renewcommand\bibname{Reference}
-\printbibliography
-\phantomsection\addcontentsline{toc}{chapter}{Reference}
+\bibitem{he2015}
+K. He, X. Zhang, S. Ren, and J. Sun,
+``Delving deep into rectifiers: Surpassing human-level performance on ImageNet classification,''
+\textit{Proceedings of the IEEE International Conference on Computer Vision}, pp. 1026--1034, 2015.
+\end{thebibliography}
 
 \end{document}

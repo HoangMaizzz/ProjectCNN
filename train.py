@@ -17,7 +17,8 @@ DENSE_HIDDEN_NODES = 64
 EPOCHS = 10
 LEARNING_RATE = 0.008
 LR_DECAY_FACTOR = 0.5
-LR_DECAY_EPOCHS = (6, 9)
+LR_PLATEAU_PATIENCE = 1
+MIN_LEARNING_RATE = 0.001
 EARLY_STOPPING_PATIENCE = 4
 EARLY_STOPPING_MIN_DELTA = 1e-4
 EARLY_STOPPING_MIN_EPOCHS = 7
@@ -31,11 +32,8 @@ RANDOM_SEED = 42
 RESULTS_DIR = Path("results") / "baseline"
 
 
-def learning_rate_for_epoch(base_learning_rate, epoch_number):
-    if epoch_number < 1:
-        raise ValueError("epoch_number must start at 1")
-    decay_count = sum(epoch_number >= milestone for milestone in LR_DECAY_EPOCHS)
-    return base_learning_rate * (LR_DECAY_FACTOR ** decay_count)
+def decay_learning_rate(current_learning_rate):
+    return max(MIN_LEARNING_RATE, current_learning_rate * LR_DECAY_FACTOR)
 
 
 def resolve_data_path(path):
@@ -275,7 +273,9 @@ def main():
         "epochs": EPOCHS,
         "initial_learning_rate": LEARNING_RATE,
         "learning_rate_decay_factor": LR_DECAY_FACTOR,
-        "learning_rate_decay_epochs": list(LR_DECAY_EPOCHS),
+        "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+        "learning_rate_plateau_patience": LR_PLATEAU_PATIENCE,
+        "minimum_learning_rate": MIN_LEARNING_RATE,
         "early_stopping_patience": EARLY_STOPPING_PATIENCE,
         "early_stopping_min_delta": EARLY_STOPPING_MIN_DELTA,
         "early_stopping_min_epochs": EARLY_STOPPING_MIN_EPOCHS,
@@ -307,10 +307,12 @@ def main():
     best_val_loss = float("inf")
     best_epoch = 0
     epochs_without_improvement = 0
+    plateau_epochs = 0
+    current_learning_rate = LEARNING_RATE
+    learning_rate_reductions = 0
     stopped_early = False
 
     for epoch in range(EPOCHS):
-        current_learning_rate = learning_rate_for_epoch(LEARNING_RATE, epoch + 1)
         print("Epoch", epoch + 1, "Learning rate:", current_learning_rate)
         start_time = time.time()
 
@@ -338,10 +340,12 @@ def main():
             best_val_loss = float(val_loss)
             best_epoch = epoch + 1
             epochs_without_improvement = 0
+            plateau_epochs = 0
             model.save_weights(MODEL_PATH, class_labels=unique_labels)
             print("Saved new best checkpoint at epoch", best_epoch)
         else:
             epochs_without_improvement += 1
+            plateau_epochs += 1
             print(
                 "No validation improvement:",
                 epochs_without_improvement,
@@ -349,9 +353,25 @@ def main():
                 EARLY_STOPPING_PATIENCE,
             )
 
+        next_learning_rate = current_learning_rate
+        learning_rate_reduced = False
+        if (
+            not is_best
+            and plateau_epochs >= LR_PLATEAU_PATIENCE
+            and current_learning_rate > MIN_LEARNING_RATE
+        ):
+            next_learning_rate = decay_learning_rate(current_learning_rate)
+            learning_rate_reduced = next_learning_rate < current_learning_rate
+            plateau_epochs = 0
+            if learning_rate_reduced:
+                learning_rate_reductions += 1
+                print("Reducing learning rate to", next_learning_rate)
+
         history.append({
             "epoch": epoch + 1,
             "learning_rate": float(current_learning_rate),
+            "next_learning_rate": float(next_learning_rate),
+            "learning_rate_reduced": bool(learning_rate_reduced),
             "train_loss": float(train_loss),
             "train_accuracy": float(train_acc),
             "validation_loss": float(val_loss),
@@ -362,12 +382,15 @@ def main():
         write_csv(
             RESULTS_DIR / "training_history.csv",
             [
-                "epoch", "learning_rate", "train_loss", "train_accuracy",
+                "epoch", "learning_rate", "next_learning_rate",
+                "learning_rate_reduced", "train_loss", "train_accuracy",
                 "validation_loss", "validation_accuracy", "epoch_seconds",
                 "is_best_checkpoint",
             ],
             history,
         )
+
+        current_learning_rate = next_learning_rate
 
         if (
             epoch + 1 >= EARLY_STOPPING_MIN_EPOCHS
@@ -394,6 +417,8 @@ def main():
         "best_validation_loss": best_val_loss,
         "best_validation_accuracy": float(history[best_epoch - 1]["validation_accuracy"]),
         "stopped_early": stopped_early,
+        "final_learning_rate": float(current_learning_rate),
+        "learning_rate_reductions": learning_rate_reductions,
         "dense_hidden_nodes": DENSE_HIDDEN_NODES,
         "model_parameters": int(sum(
             array.size for array in [
