@@ -98,7 +98,7 @@
 \pagenumbering{roman}
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-This project presents a lightweight Convolutional Neural Network (CNN) implemented from scratch with NumPy for recognizing handwritten characters on binary $16\times16$ grids. The system uses a prepared 47-class EMNIST Balanced dataset containing digits, uppercase letters, and 11 distinct lowercase classes. To reduce overfitting and computation, the current architecture preserves two convolutional blocks but reduces the dense hidden layer from 128 to 64 units, resulting in 40,687 trainable parameters. Training includes best-checkpoint selection, early stopping, and adaptive learning-rate reduction when validation loss stops improving.
+This project presents a lightweight Convolutional Neural Network (CNN) implemented from scratch with NumPy for recognizing handwritten characters on binary $16\times16$ grids. The system uses a prepared 47-class EMNIST Balanced dataset containing digits, uppercase letters, and 11 distinct lowercase classes. To reduce overfitting and computation, the current architecture preserves two convolutional blocks but reduces the dense hidden layer from 128 to 64 units, resulting in 40,687 trainable parameters. Training includes best-checkpoint selection, early stopping, and adaptive learning-rate decay based on validation-loss plateaus.
 
 % TODO_NEW_BENCHMARK: Replace the provisional result sentence after rerunning Dense-64.
 The current document temporarily uses figures and numerical results exported by the previous Dense-128 benchmark so that the report layout can be completed before the new run finishes. That benchmark achieved 72.54\% test accuracy and 0.7230 macro-F1. All provisional values are explicitly identified and must be replaced with the Dense-64 outputs before final submission.
@@ -106,8 +106,6 @@ The current document temporarily uses figures and numerical results exported by 
 \noindent\textbf{Keywords:} optical character recognition, handwritten character recognition, convolutional neural network, EMNIST, NumPy, low-resolution images.
 
 \tableofcontents
-\listoffigures
-\listoftables
 \clearpage
 \pagenumbering{arabic}
 
@@ -201,11 +199,11 @@ The training program directly loads \texttt{emnist\_47\_classes\_16x16.npz}. No 
 
 The 47 classes comprise 0--9, A--Z, and the lowercase classes a, b, d, e, f, g, h, n, q, r, and t. Unicode labels are sorted and encoded as indices 0--46 for the Softmax output.
 
-To keep the from-scratch CPU implementation practical, the program selects an equal number per class under a 10,000-image budget:
+To keep the from-scratch CPU implementation practical while improving generalization, the program selects an equal number per class under a 23,500-image budget:
 \begin{equation}
-n_{\mathrm{class}}=\left\lfloor\frac{10{,}000}{47}\right\rfloor=212.
+n_{\mathrm{class}}=\left\lfloor\frac{23{,}500}{47}\right\rfloor=500.
 \end{equation}
-The balanced total is therefore 9,964. Each class contributes 170 base training images, 21 validation images, and 21 test images, producing base partitions of 7,990, 987, and 987 images. Optional feedback is appended only after this split.
+The balanced total is therefore 23,500. Each class contributes 400 base training images, 50 validation images, and 50 test images, producing base partitions of 18,800, 2,350, and 2,350 images. Optional feedback is appended only after this split.
 
 \reportfigure{results/baseline/evaluation/class_distribution.png}
 {Balanced class distribution in the base training, validation, and test partitions.}
@@ -258,7 +256,7 @@ Softmax & 47 & Probability normalization & 47 & 0 \\
 Convolution and dense weights use He initialization; biases start at zero. Cross-entropy adds $10^{-9}$ before the logarithm to avoid $\log(0)$.
 
 \subsection*{Training Controls}
-The initial learning rate is 0.008. After each epoch, validation loss is compared with the best value observed so far. If it fails to improve by at least $10^{-4}$ for one epoch, the learning rate for the next epoch is multiplied by 0.5, down to a minimum of 0.001. This Reduce-on-Plateau policy adapts to the actual optimization trajectory instead of assuming that every run should decay at the same fixed epoch. Whenever validation loss improves, the model is saved as the new best checkpoint and the plateau counter is reset. Early stopping uses patience four and cannot trigger before epoch 7. After training, the best checkpoint rather than the final in-memory state is loaded for test evaluation.
+The initial learning rate is 0.008. Whenever validation loss fails to improve for one epoch, the learning rate is multiplied by 0.5 down to a minimum of 0.001. Whenever validation loss improves by at least $10^{-4}$, the model is saved as the new best checkpoint. Early stopping uses patience four and cannot trigger before epoch 7. After training, the best checkpoint rather than the final in-memory state is loaded for test evaluation.
 
 % =============================================================================
 \chapter{Experiments and Evaluation}
@@ -269,7 +267,7 @@ The initial learning rate is 0.008. After each epoch, validation loss is compare
 }}
 
 \section{Dataset and Baseline Analysis}
-The exported class-distribution plot confirms equal support for all 47 labels. The old baseline used 9,964 selected EMNIST images plus eight feedback samples in the training partition. Validation and test remained balanced at 21 samples per class.
+The exported class-distribution plot confirms equal support for all 47 labels. The current baseline uses 23,500 selected EMNIST images: 400 training, 50 validation, and 50 test samples per class. Optional feedback samples, when present, are added only to the training partition.
 
 % TODO_NEW_BENCHMARK: Replace training-curve discussion and image after rerun.
 The provisional learning curves show training accuracy increasing from 67.07\% to 91.76\%, while validation accuracy peaks at 76.29\% at epoch 7 and ends at 74.06\%. Validation loss increases after its epoch-7 minimum, indicating overfitting in the old Dense-128 model.
@@ -428,7 +426,7 @@ The model file can be loaded directly or extracted automatically from \texttt{cn
 \subsection*{Key Findings}
 The current architecture is structurally appropriate for $16\times16$ inputs. Two padded convolutional blocks preserve edge information, while two pooling operations leave a $4\times4$ feature grid. Reducing the dense hidden layer to 64 lowers the total parameter count to 40,687 and directly addresses the large train-validation gap observed in the previous Dense-128 benchmark.
 
-Best-checkpoint saving prevents a worse final epoch from replacing a stronger validation state. Early stopping limits unnecessary updates, and Reduce-on-Plateau provides smaller late-stage corrections as soon as validation loss stagnates. These changes are expected to improve generalization, but their effect must be confirmed by the new benchmark rather than assumed.
+Best-checkpoint saving prevents a worse final epoch from replacing a stronger validation state. Early stopping limits unnecessary updates, and the learning-rate schedule permits faster initial learning followed by smaller late-stage corrections. These changes are expected to improve generalization, but their effect must be confirmed by the new benchmark rather than assumed.
 
 \subsection*{Practical Implications}
 The provisional results identify two robust design choices that remain relevant: padding one preserves useful border features, and explicit centering is essential for mouse-drawn input. The saved-model metadata and ZIP-loading workflow also make local deployment straightforward. The user-correction mechanism provides a practical route for collecting additional handwriting, although no improvement claim is made without an independent evaluation.
