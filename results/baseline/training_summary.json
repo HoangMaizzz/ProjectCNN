@@ -1,7 +1,0 @@
-{
-  "test_loss": 1.0389169978914072,
-  "test_accuracy": 72.54305977710233,
-  "total_training_seconds": 10061.147071361542,
-  "completed_epochs": 10,
-  "model_path": "emnist_47_brain.npz"
-}

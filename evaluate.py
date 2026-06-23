@@ -19,9 +19,21 @@ from cnn_models import StandardCNN
 
 
 OUTPUT_DIR = Path("results") / "baseline" / "evaluation"
+BASELINE_DIR = Path("results") / "baseline"
 ARCHIVE_PATH = Path("cnn_evaluation_results.zip")
 MAX_ERROR_IMAGES = 25
 INFERENCE_WARMUP_IMAGES = 10
+TRAINING_HISTORY_COLUMNS = {
+    "epoch", "learning_rate", "next_learning_rate", "learning_rate_reduced",
+    "train_loss", "train_accuracy", "validation_loss", "validation_accuracy",
+    "epoch_seconds", "is_best_checkpoint",
+}
+TRAINING_SUMMARY_KEYS = {
+    "test_loss", "test_accuracy", "total_training_seconds", "completed_epochs",
+    "best_epoch", "best_validation_loss", "best_validation_accuracy",
+    "stopped_early", "final_learning_rate", "learning_rate_reductions",
+    "dense_hidden_nodes", "model_parameters", "model_path",
+}
 
 
 def require_matplotlib():
@@ -31,7 +43,7 @@ def require_matplotlib():
         )
 
 
-def prepare_test_data():
+def prepare_data_splits():
     dataset = np.load(train.resolve_data_path(train.DATA_PATH), allow_pickle=False)
     X, y = train.select_subset(
         dataset["X"],
@@ -41,14 +53,103 @@ def prepare_test_data():
         seed=train.RANDOM_SEED,
     )
     y_encoded, class_labels = train.encode_labels(y)
-    _, _, X_test, _, _, y_test = train.stratified_split(
+    X_train, X_val, X_test, y_train, y_val, y_test = train.stratified_split(
         X,
         y_encoded,
         test_ratio=train.TEST_RATIO,
         val_ratio=train.VAL_RATIO,
         seed=train.RANDOM_SEED,
     )
+    return X_train, X_val, X_test, y_train, y_val, y_test, class_labels
+
+
+def prepare_test_data():
+    _, _, X_test, _, _, y_test, class_labels = prepare_data_splits()
     return X_test, y_test, class_labels
+
+
+def remove_stale_training_artifacts():
+    history_path = BASELINE_DIR / "training_history.csv"
+    summary_path = BASELINE_DIR / "training_summary.json"
+    curve_path = OUTPUT_DIR / "training_curves.png"
+
+    stale = False
+    if history_path.exists():
+        with history_path.open("r", encoding="utf-8") as file:
+            rows = list(csv.DictReader(file))
+        stale = not rows or not TRAINING_HISTORY_COLUMNS.issubset(rows[0].keys())
+
+    if summary_path.exists():
+        with summary_path.open("r", encoding="utf-8") as file:
+            summary = json.load(file)
+        stale = stale or not TRAINING_SUMMARY_KEYS.issubset(summary.keys())
+        stale = stale or summary.get("dense_hidden_nodes") != train.DENSE_HIDDEN_NODES
+
+    if stale:
+        print("Removing stale baseline training records from an older run.")
+        for path in [history_path, summary_path, curve_path]:
+            if path.exists():
+                path.unlink()
+
+
+def sync_baseline_metadata(X_train, X_val, X_test, y_train, y_val, y_test, class_labels):
+    BASELINE_DIR.mkdir(parents=True, exist_ok=True)
+    num_classes = len(class_labels)
+    train_counts = np.bincount(y_train, minlength=num_classes)
+    val_counts = np.bincount(y_val, minlength=num_classes)
+    test_counts = np.bincount(y_test, minlength=num_classes)
+
+    split_rows = []
+    for class_index, label in enumerate(class_labels):
+        split_rows.append({
+            "class_index": class_index,
+            "label": chr(int(label)),
+            "unicode": int(label),
+            "base_train_count": int(train_counts[class_index]),
+            "feedback_count": 0,
+            "final_train_count": int(train_counts[class_index]),
+            "validation_count": int(val_counts[class_index]),
+            "test_count": int(test_counts[class_index]),
+        })
+    write_csv(
+        BASELINE_DIR / "split_summary.csv",
+        [
+            "class_index", "label", "unicode", "base_train_count",
+            "feedback_count", "final_train_count", "validation_count", "test_count",
+        ],
+        split_rows,
+    )
+
+    write_json(BASELINE_DIR / "run_config.json", {
+        "data_path": str(train.resolve_data_path(train.DATA_PATH)),
+        "model_path": train.MODEL_PATH,
+        "input_dim": train.INPUT_DIM,
+        "num_classes": num_classes,
+        "classes": [chr(int(label)) for label in class_labels],
+        "conv_padding": train.CONV_PADDING,
+        "dense_hidden_nodes": train.DENSE_HIDDEN_NODES,
+        "epochs": train.EPOCHS,
+        "initial_learning_rate": train.LEARNING_RATE,
+        "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
+        "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+        "learning_rate_plateau_patience": train.LR_PLATEAU_PATIENCE,
+        "minimum_learning_rate": train.MIN_LEARNING_RATE,
+        "early_stopping_patience": train.EARLY_STOPPING_PATIENCE,
+        "early_stopping_min_delta": train.EARLY_STOPPING_MIN_DELTA,
+        "early_stopping_min_epochs": train.EARLY_STOPPING_MIN_EPOCHS,
+        "max_samples": train.MAX_SAMPLES,
+        "balance_classes": train.BALANCE_CLASSES,
+        "use_feedback_data": False,
+        "feedback_samples": 0,
+        "test_ratio": train.TEST_RATIO,
+        "validation_ratio": train.VAL_RATIO,
+        "random_seed": train.RANDOM_SEED,
+        "train_samples": len(X_train),
+        "validation_samples": len(X_val),
+        "test_samples": len(X_test),
+        "metadata_source": "evaluate.py",
+        "backend": "NumPy CPU",
+    })
 
 
 def load_model(class_labels):
@@ -197,6 +298,12 @@ def plot_training_curves():
     with history_path.open("r", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
     if not rows:
+        return
+    if not TRAINING_HISTORY_COLUMNS.issubset(rows[0].keys()):
+        print("Skipping learning curves: training_history.csv is from an older run.")
+        stale_curve = OUTPUT_DIR / "training_curves.png"
+        if stale_curve.exists():
+            stale_curve.unlink()
         return
 
     epochs = [int(row["epoch"]) for row in rows]
@@ -467,7 +574,9 @@ def package_results():
 def main():
     require_matplotlib()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    X_test, y_test, class_labels = prepare_test_data()
+    remove_stale_training_artifacts()
+    X_train, X_val, X_test, y_train, y_val, y_test, class_labels = prepare_data_splits()
+    sync_baseline_metadata(X_train, X_val, X_test, y_train, y_val, y_test, class_labels)
     model = load_model(class_labels)
 
     for image in X_test[:INFERENCE_WARMUP_IMAGES]:
