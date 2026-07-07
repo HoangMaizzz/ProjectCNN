@@ -30,7 +30,7 @@ COMPARISON_EPOCHS = 10
 # These are controlled comparison points, not the final baseline size.
 # The full baseline is evaluated separately from train.MAX_SAMPLES in evaluate.py.
 SAMPLE_SIZES = [2350, 4700, 7050, 9400, 14100]
-LEARNING_RATES = [0.002, 0.004, 0.008]
+LEARNING_RATES = [0.002, 0.004, 0.008, 0.012]
 LR_DECAY_MODES = [True, False]
 PADDINGS = [0, 1]
 # Keep this modest because every tuning value trains a separate from-scratch model.
