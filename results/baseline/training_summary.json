@@ -1,0 +1,16 @@
+{
+  "test_loss": 0.6088,
+  "test_accuracy": 80.89,
+  "total_training_seconds": 19193.65,
+  "completed_epochs": 7,
+  "best_epoch": 6,
+  "best_validation_loss": 0.5653,
+  "best_validation_accuracy": 81.15,
+  "stopped_early": false,
+  "final_learning_rate": 0.002,
+  "learning_rate_reductions": 2,
+  "dense_hidden_nodes": 64,
+  "model_parameters": 40687,
+  "model_path": "emnist_47_brain.npz",
+  "metadata_source": "training_log"
+}

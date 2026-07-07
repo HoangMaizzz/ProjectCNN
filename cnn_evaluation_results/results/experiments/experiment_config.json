@@ -1,0 +1,33 @@
+{
+  "comparison_epochs": 10,
+  "sample_sizes": [
+    2350,
+    4700,
+    7050,
+    10000
+  ],
+  "learning_rates": [
+    0.002,
+    0.004,
+    0.008,
+    0.012
+  ],
+  "paddings": [
+    0,
+    1
+  ],
+  "control_max_samples": 4700,
+  "dense_hidden_nodes": 64,
+  "learning_rate_decay_factor": 0.5,
+  "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+  "learning_rate_plateau_patience": 1,
+  "minimum_learning_rate": 0.001,
+  "early_stopping_patience": 4,
+  "early_stopping_min_delta": 0.0001,
+  "early_stopping_min_epochs": 7,
+  "random_seed": 42,
+  "run_sample_size_experiment": true,
+  "run_learning_rate_experiment": true,
+  "run_padding_experiment": true,
+  "feedback_used": false
+}

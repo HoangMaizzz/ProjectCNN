@@ -1,0 +1,12 @@
+{
+  "test_samples": 2350,
+  "test_loss": 0.6087851363545972,
+  "test_accuracy": 0.808936170212766,
+  "macro_precision": 0.8139863088903095,
+  "macro_recall": 0.808936170212766,
+  "macro_f1": 0.8082030813077069,
+  "mean_confidence": 0.851821915590187,
+  "mean_inference_ms": 41.22982903021273,
+  "model_parameters": 40687,
+  "model_file_bytes": 329058
+}

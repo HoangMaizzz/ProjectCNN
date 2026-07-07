@@ -538,6 +538,7 @@ baseline/evaluation/test_predictions.npz: test images, labels, predictions, and 
 baseline/evaluation/shift_robustness.csv: accuracy before and after artificial shifts.
 baseline/evaluation/*.png: report-ready charts and example images.
 experiments/: optional sample-size, learning-rate, and padding comparisons.
+experiments/lr_decay_results.csv: comparison between fixed learning rate and validation-loss decay.
 
 No user-feedback comparison is included in these evaluation results.
 """

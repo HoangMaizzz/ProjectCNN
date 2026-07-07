@@ -23,13 +23,18 @@ OUTPUT_DIR = Path("results") / "experiments"
 # These switches let Kaggle skip an expensive experiment when needed.
 RUN_SAMPLE_SIZE_EXPERIMENT = True
 RUN_LEARNING_RATE_EXPERIMENT = True
+RUN_LR_DECAY_EXPERIMENT = True
 RUN_PADDING_EXPERIMENT = True
 
 COMPARISON_EPOCHS = 10
-SAMPLE_SIZES = [2350, 4700, 7050, 10000]
-LEARNING_RATES = [0.002, 0.004, 0.008, 0.012]
+# These are controlled comparison points, not the final baseline size.
+# The full baseline is evaluated separately from train.MAX_SAMPLES in evaluate.py.
+SAMPLE_SIZES = [2350, 4700, 7050, 9400, 14100]
+LEARNING_RATES = [0.002, 0.004, 0.008]
+LR_DECAY_MODES = [True, False]
 PADDINGS = [0, 1]
-CONTROL_MAX_SAMPLES = 4700
+# Keep this modest because every tuning value trains a separate from-scratch model.
+CONTROL_MAX_SAMPLES = 7050
 
 
 def write_csv(path, fieldnames, rows):
@@ -84,7 +89,7 @@ def restore_model_state(model, state):
     model.layers[9].biases = state["dense2_biases"]
 
 
-def train_configuration(max_samples, learning_rate, padding, epochs):
+def train_configuration(max_samples, learning_rate, padding, epochs, use_lr_decay=True):
     np.random.seed(train.RANDOM_SEED)
     X_train, X_val, X_test, y_train, y_val, y_test, class_labels = prepare_data(max_samples)
     model = StandardCNN(
@@ -141,6 +146,8 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
         next_learning_rate = current_learning_rate
         learning_rate_reduced = False
         if (
+            use_lr_decay
+            and
             not is_best
             and plateau_epochs >= train.LR_PLATEAU_PATIENCE
             and current_learning_rate > train.MIN_LEARNING_RATE
@@ -200,10 +207,13 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
         "validation_samples": len(X_val),
         "test_samples": len(X_test),
         "learning_rate": learning_rate,
-        "learning_rate_decay_factor": train.LR_DECAY_FACTOR,
-        "learning_rate_scheduler": "reduce_on_validation_loss_plateau",
+        "use_lr_decay": bool(use_lr_decay),
+        "learning_rate_decay_factor": train.LR_DECAY_FACTOR if use_lr_decay else None,
+        "learning_rate_scheduler": (
+            "reduce_on_validation_loss_plateau" if use_lr_decay else "fixed_learning_rate"
+        ),
         "learning_rate_plateau_patience": train.LR_PLATEAU_PATIENCE,
-        "minimum_learning_rate": train.MIN_LEARNING_RATE,
+        "minimum_learning_rate": train.MIN_LEARNING_RATE if use_lr_decay else learning_rate,
         "final_learning_rate": float(current_learning_rate),
         "learning_rate_reductions": learning_rate_reductions,
         "padding": padding,
@@ -227,20 +237,31 @@ def train_configuration(max_samples, learning_rate, padding, epochs):
     return summary, history
 
 
-def experiment_key(max_samples, learning_rate, padding, epochs):
-    return (int(max_samples), float(learning_rate), int(padding), int(epochs))
+def experiment_key(max_samples, learning_rate, padding, epochs, use_lr_decay=True):
+    return (
+        int(max_samples),
+        float(learning_rate),
+        int(padding),
+        int(epochs),
+        bool(use_lr_decay),
+    )
 
 
-def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
-    key = experiment_key(max_samples, learning_rate, padding, epochs)
+def run_or_reuse(cache, max_samples, learning_rate, padding, epochs, use_lr_decay=True):
+    key = experiment_key(max_samples, learning_rate, padding, epochs, use_lr_decay)
     if key in cache:
         print("Reusing completed configuration:", key)
         return cache[key]
 
+    decay_suffix = (
+        f"_decay{train.LR_DECAY_FACTOR:g}"
+        f"_plateau{train.LR_PLATEAU_PATIENCE}_minlr{train.MIN_LEARNING_RATE:g}"
+        if use_lr_decay
+        else "_fixedlr"
+    )
     run_id = (
         f"samples_{max_samples}_lr_{learning_rate:g}_pad_{padding}_epochs_{epochs}"
-        f"_h{train.DENSE_HIDDEN_NODES}_decay{train.LR_DECAY_FACTOR:g}"
-        f"_plateau{train.LR_PLATEAU_PATIENCE}_minlr{train.MIN_LEARNING_RATE:g}"
+        f"_h{train.DENSE_HIDDEN_NODES}{decay_suffix}"
         f"_es{train.EARLY_STOPPING_PATIENCE}"
         f"_min{train.EARLY_STOPPING_MIN_EPOCHS}"
     )
@@ -265,7 +286,13 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs):
         return summary, history
 
     print("\nRunning", run_id)
-    summary, history = train_configuration(max_samples, learning_rate, padding, epochs)
+    summary, history = train_configuration(
+        max_samples,
+        learning_rate,
+        padding,
+        epochs,
+        use_lr_decay=use_lr_decay,
+    )
     summary["run_id"] = run_id
     for row in history:
         row["run_id"] = run_id
@@ -330,6 +357,38 @@ def plot_learning_rates(rows, histories):
     plt.close(fig)
 
 
+def plot_lr_decay(rows, histories):
+    rows = sorted(rows, key=lambda row: row["use_lr_decay"], reverse=True)
+    labels = ["With LR decay" if row["use_lr_decay"] else "Fixed LR" for row in rows]
+    accuracy = [row["test_accuracy"] * 100 for row in rows]
+    macro_f1 = [row["macro_f1"] * 100 for row in rows]
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+    for row in rows:
+        history = histories[row["run_id"]]
+        label = "With LR decay" if row["use_lr_decay"] else "Fixed LR"
+        axes[0].plot(
+            [item["epoch"] for item in history],
+            [item["validation_loss"] for item in history],
+            marker="o",
+            label=label,
+        )
+    axes[0].set(title="Validation Loss With and Without LR Decay", xlabel="Epoch", ylabel="Loss")
+    axes[0].legend()
+    axes[0].grid(alpha=0.25)
+
+    x = np.arange(len(rows))
+    width = 0.34
+    axes[1].bar(x - width / 2, accuracy, width, label="Accuracy")
+    axes[1].bar(x + width / 2, macro_f1, width, label="Macro-F1")
+    axes[1].set(title="Test Score by LR Schedule", ylabel="Score (%)", xticks=x, xticklabels=labels)
+    axes[1].legend()
+    axes[1].grid(axis="y", alpha=0.2)
+    fig.tight_layout()
+    fig.savefig(OUTPUT_DIR / "lr_decay_comparison.png", dpi=180)
+    plt.close(fig)
+
+
 def plot_padding(rows):
     rows = sorted(rows, key=lambda row: row["padding"])
     labels = [f"Padding {row['padding']}" for row in rows]
@@ -361,6 +420,7 @@ def main():
         "comparison_epochs": COMPARISON_EPOCHS,
         "sample_sizes": SAMPLE_SIZES,
         "learning_rates": LEARNING_RATES,
+        "lr_decay_modes": LR_DECAY_MODES,
         "paddings": PADDINGS,
         "control_max_samples": CONTROL_MAX_SAMPLES,
         "dense_hidden_nodes": train.DENSE_HIDDEN_NODES,
@@ -374,6 +434,7 @@ def main():
         "random_seed": train.RANDOM_SEED,
         "run_sample_size_experiment": RUN_SAMPLE_SIZE_EXPERIMENT,
         "run_learning_rate_experiment": RUN_LEARNING_RATE_EXPERIMENT,
+        "run_lr_decay_experiment": RUN_LR_DECAY_EXPERIMENT,
         "run_padding_experiment": RUN_PADDING_EXPERIMENT,
         "feedback_used": False,
     })
@@ -390,6 +451,7 @@ def main():
                 train.LEARNING_RATE,
                 train.CONV_PADDING,
                 COMPARISON_EPOCHS,
+                use_lr_decay=True,
             )
             sample_rows.append(summary)
             histories[summary["run_id"]] = history
@@ -406,6 +468,7 @@ def main():
                 learning_rate,
                 train.CONV_PADDING,
                 COMPARISON_EPOCHS,
+                use_lr_decay=True,
             )
             learning_rate_rows.append(summary)
             histories[summary["run_id"]] = history
@@ -417,6 +480,27 @@ def main():
         plot_learning_rates(learning_rate_rows, histories)
         all_rows.extend(learning_rate_rows)
 
+    if RUN_LR_DECAY_EXPERIMENT:
+        decay_rows = []
+        for use_lr_decay in LR_DECAY_MODES:
+            summary, history = run_or_reuse(
+                cache,
+                CONTROL_MAX_SAMPLES,
+                train.LEARNING_RATE,
+                train.CONV_PADDING,
+                COMPARISON_EPOCHS,
+                use_lr_decay=use_lr_decay,
+            )
+            decay_rows.append(summary)
+            histories[summary["run_id"]] = history
+        write_csv(
+            OUTPUT_DIR / "lr_decay_results.csv",
+            list(decay_rows[0].keys()),
+            decay_rows,
+        )
+        plot_lr_decay(decay_rows, histories)
+        all_rows.extend(decay_rows)
+
     if RUN_PADDING_EXPERIMENT:
         padding_rows = []
         for padding in PADDINGS:
@@ -426,6 +510,7 @@ def main():
                 train.LEARNING_RATE,
                 padding,
                 COMPARISON_EPOCHS,
+                use_lr_decay=True,
             )
             padding_rows.append(summary)
             histories[summary["run_id"]] = history
