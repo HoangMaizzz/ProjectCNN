@@ -307,6 +307,9 @@ def run_or_reuse(cache, max_samples, learning_rate, padding, epochs, use_lr_deca
         history,
     )
     evaluate.write_json(summary_path, summary)
+    evaluate.write_results_readme()
+    evaluate.package_results()
+    print("Saved progress to", evaluate.ARCHIVE_PATH)
     cache[key] = (summary, history)
     return summary, history
 
