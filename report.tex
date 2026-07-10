@@ -163,7 +163,7 @@ For input tensor $X$ and filter $W_f$, the convolution output is
 Z_{i,j,f}=\sum_{u=0}^{k-1}\sum_{v=0}^{k-1}\sum_{c=0}^{C-1}
 X_{i+u,j+v,c}W_{u,v,c,f}+b_f.
 \end{equation}
-The current model uses $3\times3$ filters, stride one, and one-pixel zero padding. Padding preserves the spatial dimensions before pooling, which is particularly important because the input is only $16\times16$.
+The reported benchmark model uses $3\times3$ filters, stride one, and one-pixel zero padding. Padding preserves the spatial dimensions before pooling, which is particularly important because the input is only $16\times16$.
 
 \subsection*{Activation, Pooling, and Classification}
 The ReLU activation is $\operatorname{ReLU}(z)=\max(0,z)$. A non-overlapping $2\times2$ max-pooling operation then halves width and height. Two pooling layers therefore transform the spatial resolution as $16\rightarrow8\rightarrow4$, leaving a $4\times4$ representation rather than collapsing the image too aggressively.
@@ -359,7 +359,7 @@ Learning rate & Accuracy & Macro-F1 & Test loss \\
 {fig:learning-rate}
 
 \subsection*{Effect of Learning-Rate Decay}
-The evaluation suite also isolates the learning-rate schedule itself by comparing the baseline reduce-on-plateau schedule with a fixed learning rate. Both runs use the same 7,050-image control subset, initial learning rate 0.008, one-pixel padding, Dense-64 classifier, best-checkpoint selection, and early-stopping rule. This experiment is important because the initial learning-rate comparison changes two effects at once: the starting step size and the later decayed step sizes. With the initial rate fixed at 0.008, validation-loss-based decay improves test accuracy from 73.05\% to 75.74\%.
+The evaluation suite also isolates the learning-rate schedule itself by comparing the reduce-on-plateau schedule with a fixed learning rate. Both runs use the same 7,050-image control subset, initial learning rate 0.004, Dense-64 classifier, best-checkpoint selection, and early-stopping rule. This experiment is important because the initial learning-rate comparison changes two effects at once: the starting step size and the later decayed step sizes. After rerunning this comparison, the 0.004 decay result replaces the previous 0.008-based schedule comparison.
 
 \begin{table}[H]
 \centering
@@ -369,8 +369,8 @@ The evaluation suite also isolates the learning-rate schedule itself by comparin
 \toprule
 Schedule & Accuracy & Macro-F1 & Test loss & LR reductions \\
 \midrule
-Reduce on plateau & 75.74\% & 0.7501 & 0.7748 & 3 \\
-Fixed learning rate & 73.05\% & 0.7176 & 0.8344 & 0 \\
+Reduce on plateau & From rerun & From rerun & From rerun & From rerun \\
+Fixed learning rate & From rerun & From rerun & From rerun & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -405,6 +405,10 @@ Padding & Accuracy & Macro-F1 & Parameters & Inference \\
 
 \subsection*{Confusion Matrix and Per-Class Performance}
 The dominant confusions are visually plausible for $16\times16$ binary characters. The largest errors are F/f (15 images), 0/O (13 images), L/I (12 images), 1/I (10 images), q/9 (10 images), I/1 (8 images), O/0 (7 images), and S/5, b/6, f/F (6 images each). The weakest F1 scores are for F (0.4314), L (0.4348), 0 (0.4400), q (0.4490), 1 (0.4828), I (0.4935), g (0.5556), and f (0.5758). The strongest classes include X, B, 3, K, and 7.
+
+\reportfigure[0.9\linewidth]{results/baseline/evaluation/confusion_matrix_counts.png}
+{Confusion matrix counts for the final Dense-64 benchmark.}
+{fig:confusion-counts}
 
 \reportfigure[0.9\linewidth]{results/baseline/evaluation/confusion_matrix_normalized.png}
 {Normalized confusion matrix for the final Dense-64 model.}

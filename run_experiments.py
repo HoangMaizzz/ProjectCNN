@@ -35,6 +35,8 @@ LR_DECAY_MODES = [True, False]
 PADDINGS = [0, 1]
 # Keep this modest because every tuning value trains a separate from-scratch model.
 CONTROL_MAX_SAMPLES = 7050
+LR_DECAY_COMPARISON_RATE = 0.004
+LR_DECAY_COMPARISON_PADDING = 1
 
 
 def write_csv(path, fieldnames, rows):
@@ -424,6 +426,8 @@ def main():
         "sample_sizes": SAMPLE_SIZES,
         "learning_rates": LEARNING_RATES,
         "lr_decay_modes": LR_DECAY_MODES,
+        "lr_decay_comparison_rate": LR_DECAY_COMPARISON_RATE,
+        "lr_decay_comparison_padding": LR_DECAY_COMPARISON_PADDING,
         "paddings": PADDINGS,
         "control_max_samples": CONTROL_MAX_SAMPLES,
         "dense_hidden_nodes": train.DENSE_HIDDEN_NODES,
@@ -489,8 +493,8 @@ def main():
             summary, history = run_or_reuse(
                 cache,
                 CONTROL_MAX_SAMPLES,
-                train.LEARNING_RATE,
-                train.CONV_PADDING,
+                LR_DECAY_COMPARISON_RATE,
+                LR_DECAY_COMPARISON_PADDING,
                 COMPARISON_EPOCHS,
                 use_lr_decay=use_lr_decay,
             )
