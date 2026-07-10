@@ -100,7 +100,7 @@
 \addcontentsline{toc}{chapter}{Abstract}
 This project presents a lightweight Convolutional Neural Network (CNN) implemented from scratch with NumPy for recognizing handwritten characters on binary $16\times16$ grids. The system uses a prepared 47-class EMNIST Balanced dataset containing digits, uppercase letters, and 11 distinct lowercase classes. To reduce overfitting and computation, the current architecture preserves two convolutional blocks but reduces the dense hidden layer from 128 to 64 units, resulting in 40,687 trainable parameters. Training includes best-checkpoint selection, early stopping, and adaptive learning-rate decay based on validation-loss plateaus.
 
-The current Dense-64 model is configured for a practical 14,100-image balanced training budget so that both final training and controlled parameter tuning can be completed on Kaggle CPU. After rerunning the benchmark, the final accuracy, macro scores, confusion analysis, and robustness values should be read from \texttt{cnn\_evaluation\_results.zip}. The evaluation focuses on visually similar low-resolution classes such as 0/O, F/f, 1/I/L, 2/Z, and 9/q/g, and on the role of centering for mouse-drawn input.
+The Dense-64 benchmark uses a practical 14,100-image balanced training budget so that both final training and controlled parameter tuning can be completed on Kaggle CPU. On the balanced 1,410-image test set, the model reaches 78.79\% accuracy, 0.7945 macro-precision, 0.7879 macro-recall, and 0.7848 macro-F1. The strongest errors occur between visually similar low-resolution classes such as F/f, 0/O, 1/I/L, 2/Z, and 9/q/g. Spatial-shift testing shows that centering is important for mouse-drawn input: random shifts reduce accuracy to 53.05\%, while recentering restores it to 76.88\%.
 
 \noindent\textbf{Keywords:} optical character recognition, handwritten character recognition, convolutional neural network, EMNIST, NumPy, low-resolution images.
 
@@ -263,7 +263,7 @@ The initial learning rate is 0.008. Whenever validation loss fails to improve fo
 \section{Dataset and Baseline Analysis}
 The exported class-distribution plot confirms equal base support for all 47 labels. The current baseline uses 14,100 selected EMNIST images: 240 training, 30 validation, and 30 test samples per class. Optional correction samples are not used to alter validation or test support, and no separate feedback-ablation claim is made.
 
-After rerunning the benchmark with the 14,100-image configuration, the training curves should be regenerated from \texttt{results/baseline/training\_history.csv}. The curve is used to identify the best checkpoint, the train-validation gap, and the epochs where the learning-rate scheduler reduces the step size.
+The training curves show steady learning across seven epochs. Training accuracy increases from 71.59\% to 90.69\%, while validation accuracy increases from 67.02\% to 79.36\%. The validation loss reaches its best value at epoch 7. The learning-rate scheduler reduces the rate from 0.008 to 0.004 after epoch 4 and to 0.002 after epoch 6, helping late-stage training continue with smaller updates.
 
 \reportfigure{results/baseline/evaluation/training_curves.png}
 {Training and validation curves reconstructed from the final Dense-64 training log.}
@@ -271,40 +271,40 @@ After rerunning the benchmark with the 14,100-image configuration, the training 
 
 \begin{table}[H]
 \centering
-\caption{Final Dense-64 baseline results after rerunning the 14,100-image configuration.}
+\caption{Final Dense-64 baseline results for the 14,100-image benchmark.}
 \label{tab:baseline-results}
-\begin{tabular}{ll}
+\begin{tabular}{lr}
 \toprule
 Metric & Result \\
 \midrule
-Test loss & From \texttt{metrics\_summary.json} \\
-Test accuracy & From \texttt{metrics\_summary.json} \\
-Macro-precision & From \texttt{metrics\_summary.json} \\
-Macro-recall & From \texttt{metrics\_summary.json} \\
-Macro-F1 & From \texttt{metrics\_summary.json} \\
-Mean confidence & From \texttt{metrics\_summary.json} \\
-Mean inference time & From \texttt{metrics\_summary.json} \\
+Test loss & 0.6856 \\
+Test accuracy & 78.79\% \\
+Macro-precision & 0.7945 \\
+Macro-recall & 0.7879 \\
+Macro-F1 & 0.7848 \\
+Mean confidence & 85.66\% \\
+Mean inference time & 40.52 ms/image \\
 Parameters & 40,687 \\
-Model file size & From \texttt{metrics\_summary.json} \\
+Model file size & 329,058 bytes \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{Final training-log summary after rerun.}
+\caption{Final training-log summary.}
 \label{tab:training-summary}
-\begin{tabular}{ll}
+\begin{tabular}{lr}
 \toprule
 Item & Value \\
 \midrule
-Completed epochs & From \texttt{training\_summary.json} \\
-Best checkpoint epoch & From \texttt{training\_summary.json} \\
-Best validation loss & From \texttt{training\_summary.json} \\
-Best validation accuracy & From \texttt{training\_summary.json} \\
-Learning-rate reductions & From \texttt{training\_summary.json} \\
-Final learning rate & From \texttt{training\_summary.json} \\
-Total training time & From \texttt{training\_summary.json} \\
+Completed epochs & 7 \\
+Best checkpoint epoch & 7 \\
+Best validation loss & 0.6849 \\
+Best validation accuracy & 79.36\% \\
+Learning-rate reductions & 2 \\
+Final learning rate & 0.002 \\
+Total training time & 10,936.04 s \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -312,21 +312,21 @@ Total training time & From \texttt{training\_summary.json} \\
 \section{Controlled Model Experiments}
 
 \subsection*{Effect of Dataset Size}
-The dataset-size experiment trains separate Dense-64 models for 10 epochs using the same learning-rate scheduler and padding. The comparison now uses class-balanced sizes that are exact multiples of 47: 2,350, 4,700, 7,050, 9,400, and 14,100 images. This avoids uneven leftover samples and makes every split directly interpretable per class.
+The dataset-size experiment trains separate Dense-64 models for 10 epochs using the same learning-rate scheduler and padding. The comparison uses class-balanced sizes that are exact multiples of 47: 2,350, 4,700, 7,050, 9,400, and 14,100 images. Accuracy generally improves as the subset grows, with the strongest final result at 14,100 images. The slight dip at 9,400 images is plausible because each setting is trained only once with a fixed random seed.
 
 \begin{table}[H]
 \centering
 \caption{Effect of dataset size for the Dense-64 CNN.}
 \label{tab:sample-size}
-\begin{tabular}{rllll}
+\begin{tabular}{rrrrr}
 \toprule
 Images & Accuracy & Macro-F1 & Test loss & Runtime (s) \\
 \midrule
-2,350 & From CSV & From CSV & From CSV & From CSV \\
-4,700 & From CSV & From CSV & From CSV & From CSV \\
-7,050 & From CSV & From CSV & From CSV & From CSV \\
-9,400 & From CSV & From CSV & From CSV & From CSV \\
-14,100 & From CSV & From CSV & From CSV & From CSV \\
+2,350 & 65.11\% & 0.6319 & 1.2504 & 1,867.09 \\
+4,700 & 68.72\% & 0.6748 & 0.9629 & 2,994.16 \\
+7,050 & 75.74\% & 0.7501 & 0.7748 & 5,597.75 \\
+9,400 & 74.79\% & 0.7468 & 0.8099 & 7,487.91 \\
+14,100 & 78.58\% & 0.7860 & 0.6940 & 11,197.05 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -336,20 +336,20 @@ Images & Accuracy & Macro-F1 & Test loss & Runtime (s) \\
 {fig:sample-size}
 
 \subsection*{Effect of Learning Rate}
-Each value in this experiment is used as the initial learning rate and is then controlled by the same reduce-on-plateau schedule. The control subset now contains 7,050 balanced images so that learning-rate conclusions are closer to the final 14,100-image run while still remaining practical to execute.
+Each value in this experiment is used as the initial learning rate and is then controlled by the same reduce-on-plateau schedule. The control subset contains 7,050 balanced images so that learning-rate conclusions are closer to the final 14,100-image run while still remaining practical to execute. The best control result is obtained with an initial learning rate of 0.004, while 0.012 is less stable and produces the weakest result.
 
 \begin{table}[H]
 \centering
 \caption{Initial learning-rate comparison for the Dense-64 CNN.}
 \label{tab:learning-rate}
-\begin{tabular}{rlll}
+\begin{tabular}{rrrr}
 \toprule
 Learning rate & Accuracy & Macro-F1 & Test loss \\
 \midrule
-0.002 & From CSV & From CSV & From CSV \\
-0.004 & From CSV & From CSV & From CSV \\
-0.008 & From CSV & From CSV & From CSV \\
-0.012 & From CSV & From CSV & From CSV \\
+0.002 & 76.88\% & 0.7697 & 0.7732 \\
+0.004 & 78.87\% & 0.7862 & 0.7868 \\
+0.008 & 75.74\% & 0.7501 & 0.7748 \\
+0.012 & 73.19\% & 0.7223 & 0.9119 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -359,26 +359,40 @@ Learning rate & Accuracy & Macro-F1 & Test loss \\
 {fig:learning-rate}
 
 \subsection*{Effect of Learning-Rate Decay}
-The evaluation suite also isolates the learning-rate schedule itself by comparing the baseline reduce-on-plateau schedule with a fixed learning rate. Both runs use the same 4,700-image control subset, initial learning rate 0.008, one-pixel padding, Dense-64 classifier, best-checkpoint selection, and early-stopping rule. This experiment is important because the initial learning-rate comparison changes two effects at once: the starting step size and the later decayed step sizes. The decay comparison keeps the initial step size fixed and tests whether reducing the learning rate after validation-loss plateaus improves generalization.
+The evaluation suite also isolates the learning-rate schedule itself by comparing the baseline reduce-on-plateau schedule with a fixed learning rate. Both runs use the same 7,050-image control subset, initial learning rate 0.008, one-pixel padding, Dense-64 classifier, best-checkpoint selection, and early-stopping rule. This experiment is important because the initial learning-rate comparison changes two effects at once: the starting step size and the later decayed step sizes. With the initial rate fixed at 0.008, validation-loss-based decay improves test accuracy from 73.05\% to 75.74\%.
+
+\begin{table}[H]
+\centering
+\caption{Learning-rate decay comparison for the Dense-64 CNN.}
+\label{tab:lr-decay}
+\begin{tabular}{lrrrr}
+\toprule
+Schedule & Accuracy & Macro-F1 & Test loss & LR reductions \\
+\midrule
+Reduce on plateau & 75.74\% & 0.7501 & 0.7748 & 3 \\
+Fixed learning rate & 73.05\% & 0.7176 & 0.8344 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \reportfigure{results/experiments/lr_decay_comparison.png}
 {Comparison between fixed learning rate and validation-loss-based learning-rate decay.}
 {fig:lr-decay}
 
 \subsection*{Effect of Padding}
-The padding experiment compares the same Dense-64 model with and without one-pixel convolution padding on the 7,050-image control subset. Padding one is retained in the final architecture because it preserves border strokes on $16\times16$ inputs, although it increases the flattened feature size, parameter count, and inference time.
+The padding experiment compares the same Dense-64 model with and without one-pixel convolution padding on the 7,050-image control subset. Padding zero is slightly better in this controlled setting, while also reducing parameters from 40,687 to 16,111 and reducing inference time from 37.32 ms/image to 24.49 ms/image. This suggests that a future final training run should consider padding zero, although the reported baseline evaluation still corresponds to the saved padding-one model in the current ZIP.
 
 \begin{table}[H]
 \centering
 \caption{Padding comparison for the Dense-64 CNN.}
 \label{tab:padding}
-\begin{tabular}{rllll}
+\begin{tabular}{rrrrr}
 \toprule
 Padding & Accuracy & Macro-F1 & Parameters & Inference \\
  & & & & (ms/image) \\
 \midrule
-0 & From CSV & From CSV & 16,111 & From CSV \\
-1 & From CSV & From CSV & 40,687 & From CSV \\
+0 & 76.17\% & 0.7584 & 16,111 & 24.49 \\
+1 & 75.74\% & 0.7501 & 40,687 & 37.32 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -390,7 +404,7 @@ Padding & Accuracy & Macro-F1 & Parameters & Inference \\
 \section{Robustness and Error Analysis}
 
 \subsection*{Confusion Matrix and Per-Class Performance}
-The dominant confusions are expected to remain visually plausible for $16\times16$ binary characters. After rerunning the benchmark, the exact weakest classes and most frequent confusion pairs should be read from \texttt{per\_class\_metrics.csv} and \texttt{top\_confusions.csv}.
+The dominant confusions are visually plausible for $16\times16$ binary characters. The largest errors are F/f (15 images), 0/O (13 images), L/I (12 images), 1/I (10 images), q/9 (10 images), I/1 (8 images), O/0 (7 images), and S/5, b/6, f/F (6 images each). The weakest F1 scores are for F (0.4314), L (0.4348), 0 (0.4400), q (0.4490), 1 (0.4828), I (0.4935), g (0.5556), and f (0.5758). The strongest classes include X, B, 3, K, and 7.
 
 \reportfigure[0.9\linewidth]{results/baseline/evaluation/confusion_matrix_normalized.png}
 {Normalized confusion matrix for the final Dense-64 model.}
@@ -405,19 +419,19 @@ The dominant confusions are expected to remain visually plausible for $16\times1
 {fig:misclassified}
 
 \subsection*{Spatial Robustness}
-Random shifts of up to two pixels test how sensitive the model is to off-center characters. Cropping and centering the shifted image should recover a large part of the lost accuracy if the drawing-interface centering step is useful.
+Random shifts of up to two pixels reduce test accuracy from 78.79\% to 53.05\%. Cropping and centering the shifted image restores accuracy to 76.88\%. This result supports the centering operation used in the drawing interface, because mouse-drawn characters are rarely placed in exactly the same position as dataset samples.
 
 \begin{table}[H]
 \centering
 \caption{Spatial-robustness results for the final Dense-64 model.}
 \label{tab:robustness}
-\begin{tabular}{lll}
+\begin{tabular}{lrr}
 \toprule
 Condition & Accuracy & Mean loss \\
 \midrule
-Original & From CSV & From CSV \\
-Random shift $[-2,2]$ & From CSV & From CSV \\
-Shifted then centered & From CSV & From CSV \\
+Original & 78.79\% & 0.6856 \\
+Random shift $[-2,2]$ & 53.05\% & 2.1192 \\
+Shifted then centered & 76.88\% & 0.7530 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -439,15 +453,15 @@ The model file can be loaded directly or extracted automatically from \texttt{cn
 \chapter{Conclusions}
 
 \subsection*{Key Findings}
-The current architecture is structurally appropriate for $16\times16$ inputs. Two padded convolutional blocks preserve edge information, while two pooling operations leave a $4\times4$ feature grid. Reducing the dense hidden layer to 64 keeps the model at 40,687 parameters and makes repeated CPU experiments more practical.
+The current architecture is structurally appropriate for $16\times16$ inputs. Two padded convolutional blocks preserve edge information, while two pooling operations leave a $4\times4$ feature grid. Reducing the dense hidden layer to 64 keeps the saved model at 40,687 parameters while reaching 78.79\% test accuracy and 0.7848 macro-F1 on a balanced 47-class test set.
 
-Best-checkpoint saving prevents the final epoch from replacing a stronger validation state. The best validation loss occurs at epoch 6, and that checkpoint is used for the final test result. The adaptive learning-rate schedule reduces the learning rate after validation-loss plateaus, allowing faster initial progress followed by smaller late-stage corrections.
+Best-checkpoint saving prevents a weaker epoch from replacing a stronger validation state. In the final training log, the best validation loss occurs at epoch 7. The adaptive learning-rate schedule reduces the learning rate after validation-loss plateaus, and the controlled schedule comparison confirms that decay improves generalization over a fixed learning rate at the same initial value.
 
 \subsection*{Practical Implications}
-The results identify two practical design choices. First, explicit centering is essential for mouse-drawn input because it recovers most of the accuracy lost under random spatial shifts. Second, padding one remains a reasonable default for the final model because it preserves border strokes, even though a small controlled padding experiment shows similar accuracy at 4,700 images. The saved-model metadata and ZIP-loading workflow also make local deployment straightforward. The user-correction mechanism provides a practical route for collecting additional handwriting, although no improvement claim is made without an independent evaluation.
+The results identify several practical design choices. First, explicit centering is essential for mouse-drawn input because it recovers most of the accuracy lost under random spatial shifts. Second, the learning-rate study suggests that 0.004 is a stronger initial value than 0.008 on the 7,050-image control subset. Third, the padding study suggests that padding zero can be both faster and slightly more accurate in the controlled setting, so it is a good candidate for retraining the final model. The saved-model metadata and ZIP-loading workflow also make local deployment straightforward. The user-correction mechanism provides a practical route for collecting additional handwriting, although no improvement claim is made without an independent evaluation.
 
 \subsection*{Limitations and Future Work}
-The evaluation uses one random seed and a fixed balanced test set of 50 images per class. Training is slow because convolution and backpropagation are implemented with Python and NumPy loops rather than optimized deep-learning kernels. The model does not use training-time augmentation, L2 regularization, dropout, or a separate user-level holdout set. Future work may add repeated-seed evaluation, manual mini-batch vectorization, lightweight training-only augmentation, probability calibration, and a controlled feedback study.
+The evaluation uses one random seed and a fixed balanced test set of 30 images per class. Training is slow because convolution and backpropagation are implemented with Python and NumPy loops rather than optimized deep-learning kernels. The model does not use training-time augmentation, L2 regularization, dropout, or a separate user-level holdout set. Future work may add repeated-seed evaluation, manual mini-batch vectorization, lightweight training-only augmentation, probability calibration, a controlled feedback study, and a final retraining pass using the best tuning choices identified here.
 
 % =============================================================================
 \appendix
