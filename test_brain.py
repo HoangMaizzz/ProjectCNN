@@ -12,7 +12,6 @@ from cnn_models import StandardCNN
 MODEL_PATH = Path("models") / "emnist_47_brain.npz"
 MODEL_ARCHIVE_PATH = Path("artifacts") / "cnn_evaluation_results.zip"
 FEEDBACK_DATA_PATH = Path("data") / "user_feedback_47_classes_16x16.npz"
-EXTRA_FEEDBACK_CHARS = ["ư"]
 
 
 def prepare_model_file():
@@ -60,10 +59,6 @@ with np.load(model_path, allow_pickle=False) as saved_model:
 
 if unique_labels.ndim != 1:
     raise SystemExit("The trained model must contain a one-dimensional class label list.")
-
-valid_chars = {chr(int(label)): int(label) for label in unique_labels}
-for char in EXTRA_FEEDBACK_CHARS:
-    valid_chars.setdefault(char, ord(char))
 
 print("Loading model...")
 model = StandardCNN(
@@ -317,19 +312,18 @@ class DrawingApp:
         self.entry_correct.config(state=tk.NORMAL)
         self.btn_save.config(state=tk.NORMAL)
         self.entry_correct.focus_set()
-        self.lbl_feedback.config(text="Enter the exact label, for example 7, A, a, or ư.")
+        self.lbl_feedback.config(text="Enter exactly one character, for example 7, A, a, ư, or v.")
 
     def save_correction(self):
         if self.last_prediction_image is None:
             return
 
         label_text = self.entry_correct.get().strip()
-        if len(label_text) != 1 or label_text not in valid_chars:
-            allowed = "".join(valid_chars.keys())
-            messagebox.showerror("Invalid label", f"Use one of these labels: {allowed}")
+        if len(label_text) != 1:
+            messagebox.showerror("Invalid label", "Enter exactly one character.")
             return
 
-        label_value = valid_chars[label_text]
+        label_value = ord(label_text)
         self.append_feedback_sample(self.last_prediction_image, label_value)
 
         self.lbl_feedback.config(

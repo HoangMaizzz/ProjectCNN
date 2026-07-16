@@ -10,7 +10,6 @@ from cnn_models import StandardCNN
 DATA_PATH = Path("data") / "emnist_47_classes_16x16.npz"
 FEEDBACK_DATA_PATH = Path("data") / "user_feedback_47_classes_16x16.npz"
 MODEL_PATH = Path("models") / "emnist_47_brain.npz"
-EXTRA_FEEDBACK_LABELS = np.array([ord("ư")], dtype=np.int32)
 
 INPUT_DIM = 16
 CONV_PADDING = 1
@@ -217,12 +216,10 @@ def main():
 
     X_feedback = None
     y_feedback = None
-    feedback_allowed_labels = np.unique(np.concatenate([np.unique(y_full), EXTRA_FEEDBACK_LABELS]))
     if USE_FEEDBACK_DATA:
         X_feedback, y_feedback = load_feedback_data(
             FEEDBACK_DATA_PATH,
             image_shape=X_full.shape[1:],
-            valid_labels=feedback_allowed_labels,
         )
 
     if y_feedback is not None:
@@ -247,17 +244,41 @@ def main():
     )
 
     base_train_counts = np.bincount(y_train, minlength=num_classes)
-    val_counts = np.bincount(y_val, minlength=num_classes)
-    test_counts = np.bincount(y_test, minlength=num_classes)
+    feedback_train_counts = np.zeros(num_classes, dtype=np.int64)
+    feedback_val_counts = np.zeros(num_classes, dtype=np.int64)
+    feedback_test_counts = np.zeros(num_classes, dtype=np.int64)
     feedback_samples = 0
 
     if USE_FEEDBACK_DATA and X_feedback is not None:
         y_feedback_idx, _ = encode_labels(y_feedback, unique_labels)
-        X_train = np.concatenate([X_train, X_feedback], axis=0)
-        y_train = np.concatenate([y_train, y_feedback_idx], axis=0)
+        (
+            X_feedback_train,
+            X_feedback_val,
+            X_feedback_test,
+            y_feedback_train,
+            y_feedback_val,
+            y_feedback_test,
+        ) = stratified_split(
+            X_feedback,
+            y_feedback_idx,
+            test_ratio=TEST_RATIO,
+            val_ratio=VAL_RATIO,
+            seed=RANDOM_SEED + 1,
+        )
+        X_train = np.concatenate([X_train, X_feedback_train], axis=0)
+        y_train = np.concatenate([y_train, y_feedback_train], axis=0)
+        X_val = np.concatenate([X_val, X_feedback_val], axis=0)
+        y_val = np.concatenate([y_val, y_feedback_val], axis=0)
+        X_test = np.concatenate([X_test, X_feedback_test], axis=0)
+        y_test = np.concatenate([y_test, y_feedback_test], axis=0)
         feedback_samples = len(X_feedback)
+        feedback_train_counts = np.bincount(y_feedback_train, minlength=num_classes)
+        feedback_val_counts = np.bincount(y_feedback_val, minlength=num_classes)
+        feedback_test_counts = np.bincount(y_feedback_test, minlength=num_classes)
 
     final_train_counts = np.bincount(y_train, minlength=num_classes)
+    val_counts = np.bincount(y_val, minlength=num_classes)
+    test_counts = np.bincount(y_test, minlength=num_classes)
     split_rows = []
     for class_index, label in enumerate(unique_labels):
         split_rows.append({
@@ -265,7 +286,10 @@ def main():
             "label": chr(int(label)),
             "unicode": int(label),
             "base_train_count": int(base_train_counts[class_index]),
-            "feedback_count": int(final_train_counts[class_index] - base_train_counts[class_index]),
+            "feedback_count": int(feedback_train_counts[class_index]),
+            "feedback_train_count": int(feedback_train_counts[class_index]),
+            "feedback_validation_count": int(feedback_val_counts[class_index]),
+            "feedback_test_count": int(feedback_test_counts[class_index]),
             "final_train_count": int(final_train_counts[class_index]),
             "validation_count": int(val_counts[class_index]),
             "test_count": int(test_counts[class_index]),
@@ -274,7 +298,8 @@ def main():
         RESULTS_DIR / "split_summary.csv",
         [
             "class_index", "label", "unicode", "base_train_count",
-            "feedback_count", "final_train_count", "validation_count", "test_count",
+            "feedback_count", "feedback_train_count", "feedback_validation_count",
+            "feedback_test_count", "final_train_count", "validation_count", "test_count",
         ],
         split_rows,
     )
@@ -300,6 +325,10 @@ def main():
         "balance_classes": BALANCE_CLASSES,
         "use_feedback_data": USE_FEEDBACK_DATA,
         "feedback_samples": feedback_samples,
+        "feedback_split_policy": "stratified_train_validation_test",
+        "feedback_train_samples": int(np.sum(feedback_train_counts)),
+        "feedback_validation_samples": int(np.sum(feedback_val_counts)),
+        "feedback_test_samples": int(np.sum(feedback_test_counts)),
         "test_ratio": TEST_RATIO,
         "validation_ratio": VAL_RATIO,
         "random_seed": RANDOM_SEED,

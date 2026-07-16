@@ -62,8 +62,21 @@ def prepare_data_splits(class_labels=None):
         balance_classes=train.BALANCE_CLASSES,
         seed=train.RANDOM_SEED,
     )
+    X_feedback = None
+    y_feedback = None
+    if train.USE_FEEDBACK_DATA:
+        valid_labels = class_labels if class_labels is not None else None
+        X_feedback, y_feedback = train.load_feedback_data(
+            train.FEEDBACK_DATA_PATH,
+            image_shape=X.shape[1:],
+            valid_labels=valid_labels,
+        )
+
     if class_labels is None:
-        class_labels = train.encode_labels(y)[1]
+        if y_feedback is not None:
+            class_labels = np.unique(np.concatenate([y, y_feedback]))
+        else:
+            class_labels = train.encode_labels(y)[1]
     y_encoded, class_labels = train.encode_labels(y, class_labels)
     X_train, X_val, X_test, y_train, y_val, y_test = train.stratified_split(
         X,
@@ -72,6 +85,28 @@ def prepare_data_splits(class_labels=None):
         val_ratio=train.VAL_RATIO,
         seed=train.RANDOM_SEED,
     )
+    if X_feedback is not None:
+        y_feedback_encoded, _ = train.encode_labels(y_feedback, class_labels)
+        (
+            X_feedback_train,
+            X_feedback_val,
+            X_feedback_test,
+            y_feedback_train,
+            y_feedback_val,
+            y_feedback_test,
+        ) = train.stratified_split(
+            X_feedback,
+            y_feedback_encoded,
+            test_ratio=train.TEST_RATIO,
+            val_ratio=train.VAL_RATIO,
+            seed=train.RANDOM_SEED + 1,
+        )
+        X_train = np.concatenate([X_train, X_feedback_train], axis=0)
+        y_train = np.concatenate([y_train, y_feedback_train], axis=0)
+        X_val = np.concatenate([X_val, X_feedback_val], axis=0)
+        y_val = np.concatenate([y_val, y_feedback_val], axis=0)
+        X_test = np.concatenate([X_test, X_feedback_test], axis=0)
+        y_test = np.concatenate([y_test, y_feedback_test], axis=0)
     return X_train, X_val, X_test, y_train, y_val, y_test, class_labels
 
 
