@@ -7,9 +7,10 @@ import numpy as np
 from cnn_models import StandardCNN
 
 
-DATA_PATH = "emnist_47_classes_16x16.npz"
-FEEDBACK_DATA_PATH = "user_feedback_47_classes_16x16.npz"
-MODEL_PATH = "emnist_47_brain.npz"
+DATA_PATH = Path("data") / "emnist_47_classes_16x16.npz"
+FEEDBACK_DATA_PATH = Path("data") / "user_feedback_47_classes_16x16.npz"
+MODEL_PATH = Path("models") / "emnist_47_brain.npz"
+EXTRA_FEEDBACK_LABELS = np.array([ord("ư")], dtype=np.int32)
 
 INPUT_DIM = 16
 CONV_PADDING = 1
@@ -40,6 +41,9 @@ def resolve_data_path(path):
     local_path = Path(path)
     if local_path.exists():
         return local_path
+    root_fallback = Path(local_path.name)
+    if root_fallback.exists():
+        return root_fallback
 
     kaggle_input = Path("/kaggle/input")
     if kaggle_input.exists():
@@ -121,7 +125,7 @@ def select_subset(X, y, max_samples, balance_classes, seed):
     return X[indices], y[indices]
 
 
-def load_feedback_data(path, image_shape, valid_labels):
+def load_feedback_data(path, image_shape, valid_labels=None):
     try:
         feedback = np.load(path)
     except FileNotFoundError:
@@ -136,12 +140,13 @@ def load_feedback_data(path, image_shape, valid_labels):
         print("Ignoring feedback: expected image shape", image_shape)
         return None, None
 
-    valid_mask = np.isin(y_feedback, valid_labels)
-    ignored_count = int(np.sum(~valid_mask))
-    if ignored_count:
-        print("Ignoring feedback samples with unsupported labels:", ignored_count)
-        X_feedback = X_feedback[valid_mask]
-        y_feedback = y_feedback[valid_mask]
+    if valid_labels is not None:
+        valid_mask = np.isin(y_feedback, valid_labels)
+        ignored_count = int(np.sum(~valid_mask))
+        if ignored_count:
+            print("Ignoring feedback samples with unsupported labels:", ignored_count)
+            X_feedback = X_feedback[valid_mask]
+            y_feedback = y_feedback[valid_mask]
 
     if len(X_feedback) == 0:
         return None, None
@@ -181,8 +186,8 @@ def stratified_split(X, y, test_ratio, val_ratio, seed):
     )
 
 
-def encode_labels(y):
-    unique_labels = np.unique(y)
+def encode_labels(y, class_labels=None):
+    unique_labels = np.unique(y) if class_labels is None else np.asarray(class_labels)
     label_to_index = {label: idx for idx, label in enumerate(unique_labels)}
     y_idx = np.array([label_to_index[label] for label in y])
     return y_idx, unique_labels
@@ -210,7 +215,25 @@ def main():
         seed=RANDOM_SEED,
     )
 
-    y_full_idx, unique_labels = encode_labels(y_full)
+    X_feedback = None
+    y_feedback = None
+    feedback_allowed_labels = np.unique(np.concatenate([np.unique(y_full), EXTRA_FEEDBACK_LABELS]))
+    if USE_FEEDBACK_DATA:
+        X_feedback, y_feedback = load_feedback_data(
+            FEEDBACK_DATA_PATH,
+            image_shape=X_full.shape[1:],
+            valid_labels=feedback_allowed_labels,
+        )
+
+    if y_feedback is not None:
+        unique_labels = np.unique(np.concatenate([y_full, y_feedback]))
+        extra_labels = sorted(set(unique_labels) - set(y_full))
+        if extra_labels:
+            print("Extra feedback-only classes:", [chr(int(label)) for label in extra_labels])
+        y_full_idx, unique_labels = encode_labels(y_full, unique_labels)
+    else:
+        y_full_idx, unique_labels = encode_labels(y_full)
+
     num_classes = len(unique_labels)
     print("Classes:", [chr(label) for label in unique_labels])
     print("Dataset samples:", len(X_full))
@@ -228,17 +251,11 @@ def main():
     test_counts = np.bincount(y_test, minlength=num_classes)
     feedback_samples = 0
 
-    if USE_FEEDBACK_DATA:
-        X_feedback, y_feedback = load_feedback_data(
-            FEEDBACK_DATA_PATH,
-            image_shape=X_full.shape[1:],
-            valid_labels=unique_labels,
-        )
-        if X_feedback is not None:
-            y_feedback_idx = np.searchsorted(unique_labels, y_feedback)
-            X_train = np.concatenate([X_train, X_feedback], axis=0)
-            y_train = np.concatenate([y_train, y_feedback_idx], axis=0)
-            feedback_samples = len(X_feedback)
+    if USE_FEEDBACK_DATA and X_feedback is not None:
+        y_feedback_idx, _ = encode_labels(y_feedback, unique_labels)
+        X_train = np.concatenate([X_train, X_feedback], axis=0)
+        y_train = np.concatenate([y_train, y_feedback_idx], axis=0)
+        feedback_samples = len(X_feedback)
 
     final_train_counts = np.bincount(y_train, minlength=num_classes)
     split_rows = []
@@ -264,7 +281,7 @@ def main():
 
     write_json(RESULTS_DIR / "run_config.json", {
         "data_path": str(data_path),
-        "model_path": MODEL_PATH,
+        "model_path": str(MODEL_PATH),
         "input_dim": INPUT_DIM,
         "num_classes": num_classes,
         "classes": [chr(int(label)) for label in unique_labels],
@@ -341,6 +358,7 @@ def main():
             best_epoch = epoch + 1
             epochs_without_improvement = 0
             plateau_epochs = 0
+            Path(MODEL_PATH).parent.mkdir(parents=True, exist_ok=True)
             model.save_weights(MODEL_PATH, class_labels=unique_labels)
             print("Saved new best checkpoint at epoch", best_epoch)
         else:
@@ -428,7 +446,7 @@ def main():
                 model.layers[9].weights, model.layers[9].biases,
             ]
         )),
-        "model_path": MODEL_PATH,
+        "model_path": str(MODEL_PATH),
     })
     print("Saved training records to", RESULTS_DIR)
 

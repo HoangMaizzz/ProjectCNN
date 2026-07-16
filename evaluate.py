@@ -20,7 +20,7 @@ from cnn_models import StandardCNN
 
 OUTPUT_DIR = Path("results") / "baseline" / "evaluation"
 BASELINE_DIR = Path("results") / "baseline"
-ARCHIVE_PATH = Path("cnn_evaluation_results.zip")
+ARCHIVE_PATH = Path("artifacts") / "cnn_evaluation_results.zip"
 MAX_ERROR_IMAGES = 25
 INFERENCE_WARMUP_IMAGES = 10
 TRAINING_HISTORY_COLUMNS = {
@@ -43,7 +43,17 @@ def require_matplotlib():
         )
 
 
-def prepare_data_splits():
+def load_saved_class_labels():
+    model_path = Path(train.MODEL_PATH)
+    if not model_path.exists():
+        return None
+    with np.load(model_path, allow_pickle=False) as data:
+        if "class_labels" not in data.files:
+            return None
+        return np.array(data["class_labels"], copy=True)
+
+
+def prepare_data_splits(class_labels=None):
     dataset = np.load(train.resolve_data_path(train.DATA_PATH), allow_pickle=False)
     X, y = train.select_subset(
         dataset["X"],
@@ -52,7 +62,9 @@ def prepare_data_splits():
         balance_classes=train.BALANCE_CLASSES,
         seed=train.RANDOM_SEED,
     )
-    y_encoded, class_labels = train.encode_labels(y)
+    if class_labels is None:
+        class_labels = train.encode_labels(y)[1]
+    y_encoded, class_labels = train.encode_labels(y, class_labels)
     X_train, X_val, X_test, y_train, y_val, y_test = train.stratified_split(
         X,
         y_encoded,
@@ -64,7 +76,7 @@ def prepare_data_splits():
 
 
 def prepare_test_data():
-    _, _, X_test, _, _, y_test, class_labels = prepare_data_splits()
+    _, _, X_test, _, _, y_test, class_labels = prepare_data_splits(load_saved_class_labels())
     return X_test, y_test, class_labels
 
 
@@ -122,7 +134,7 @@ def sync_baseline_metadata(X_train, X_val, X_test, y_train, y_val, y_test, class
 
     write_json(BASELINE_DIR / "run_config.json", {
         "data_path": str(train.resolve_data_path(train.DATA_PATH)),
-        "model_path": train.MODEL_PATH,
+        "model_path": str(train.MODEL_PATH),
         "input_dim": train.INPUT_DIM,
         "num_classes": num_classes,
         "classes": [chr(int(label)) for label in class_labels],
@@ -223,11 +235,15 @@ def classification_metrics(matrix):
     )
     accuracy = true_positive.sum() / max(1, matrix.sum())
 
+    supported = true_count > 0
+    if not np.any(supported):
+        supported = np.ones_like(true_count, dtype=bool)
+
     return {
         "accuracy": float(accuracy),
-        "macro_precision": float(np.mean(precision)),
-        "macro_recall": float(np.mean(recall)),
-        "macro_f1": float(np.mean(f1)),
+        "macro_precision": float(np.mean(precision[supported])),
+        "macro_recall": float(np.mean(recall[supported])),
+        "macro_f1": float(np.mean(f1[supported])),
         "precision": precision,
         "recall": recall,
         "f1": f1,
@@ -547,6 +563,7 @@ No user-feedback comparison is included in these evaluation results.
 
 
 def package_results():
+    ARCHIVE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ARCHIVE_PATH, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         results_root = Path("results")
         if results_root.exists():
@@ -576,8 +593,10 @@ def main():
     require_matplotlib()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     remove_stale_training_artifacts()
-    X_train, X_val, X_test, y_train, y_val, y_test, class_labels = prepare_data_splits()
-    sync_baseline_metadata(X_train, X_val, X_test, y_train, y_val, y_test, class_labels)
+    class_labels = load_saved_class_labels()
+    X_train, X_val, X_test, y_train, y_val, y_test, class_labels = prepare_data_splits(class_labels)
+    if not (BASELINE_DIR / "run_config.json").exists() or not (BASELINE_DIR / "split_summary.csv").exists():
+        sync_baseline_metadata(X_train, X_val, X_test, y_train, y_val, y_test, class_labels)
     model = load_model(class_labels)
 
     for image in X_test[:INFERENCE_WARMUP_IMAGES]:

@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+
+# Generated evaluation outputs
+results/
+cnn_evaluation_results/
+
+# Local screenshots and temporary report captures
+Screenshot*.png
+gui_demo.png
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

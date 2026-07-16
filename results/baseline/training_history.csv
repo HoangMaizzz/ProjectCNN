@@ -1,8 +1,0 @@
-epoch,learning_rate,next_learning_rate,learning_rate_reduced,train_loss,train_accuracy,validation_loss,validation_accuracy,epoch_seconds,is_best_checkpoint
-1,0.008,0.008,False,0.7639,74.92,0.857,71.83,2662.61,True
-2,0.008,0.008,False,0.6105,79.64,0.7757,76.0,2847.52,True
-3,0.008,0.008,False,0.5189,81.86,0.682,77.11,2733.05,True
-4,0.008,0.008,False,0.4624,83.96,0.6476,79.36,2771.23,True
-5,0.008,0.004,True,0.4273,84.5,0.6511,78.21,2719.67,False
-6,0.004,0.004,False,0.2922,89.34,0.5653,81.15,2750.49,True
-7,0.004,0.002,True,0.2728,89.85,0.6043,81.06,2709.08,False
